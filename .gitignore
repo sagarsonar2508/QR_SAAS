@@ -3,7 +3,9 @@ node_modules/
 .env
 .pgdata/
 uploads/
-drizzle/
+# drizzle/ holds hand-written SQL migrations that must deploy with the code.
+# Only drizzle-kit's generated bookkeeping is ignored.
+drizzle/meta/
 *.log
 .DS_Store
 package-lock.json
