@@ -78,14 +78,45 @@ subscription would downgrade a user who has already resubscribed.
 Run the migration **once per environment, before `npm run db:push`**:
 
 ```bash
-psql "$DATABASE_URL" -f drizzle/0001_multi_provider_billing.sql
-npm run db:push
+DATABASE_URL=... npm run db:migrate
+DATABASE_URL=... npm run db:push
 ```
+
+`db:migrate` applies every `drizzle/*.sql` file in filename order that this
+database hasn't seen yet, tracked in the `_migrations` table. It's safe to run on
+every deploy — applied files are skipped. Use `npm run db:migrate -- --dry` to
+see what would run without changing anything. It uses the `postgres` package
+from `dependencies`, so no `psql` binary is required.
 
 The migration renames `razorpay_plan_id` → `provider_plan_id` and
 `razorpay_subscription_id` → `provider_subscription_id`. It must not be left to
 `drizzle-kit push`, which treats a rename as drop + add and would lose the
-provider ids. It is idempotent, so re-running is harmless.
+cached provider ids.
+
+Migrations must be **idempotent**: the runner marks a file applied only after it
+succeeds, so a crash in between leaves it to be re-run.
+
+#### Running it against a remote database
+
+The runner only needs Node, this repo and a reachable `DATABASE_URL`.
+
+```bash
+# From your machine, if the database accepts external connections
+DATABASE_URL='postgres://user:pass@db-host:5432/qrveda' npm run db:migrate
+
+# On the server, in the deployed checkout
+cd /srv/qrveda && npm run db:migrate
+
+# Cloud SQL / RDS / any database that isn't publicly reachable — tunnel first
+cloud-sql-proxy PROJECT:REGION:INSTANCE --port 5433 &
+DATABASE_URL='postgres://user:pass@localhost:5433/qrveda' npm run db:migrate
+```
+
+If the database enforces TLS, append `?sslmode=require` to the URL.
+
+Order matters on a deploy: **migrate before the new code starts serving.** The
+migration is additive plus two renames, so old code would break on the renamed
+columns — take the brief window, or deploy during low traffic.
 
 ### Razorpay
 

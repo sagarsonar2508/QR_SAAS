@@ -6,6 +6,7 @@
     "dev": "next dev -p 3003",
     "build": "next build",
     "start": "next start -p 3003",
+    "db:migrate": "node scripts/migrate.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:start": "./node_modules/@embedded-postgres/darwin-arm64/native/bin/pg_ctl -D .pgdata -o \"-p 5433\" -l .pgdata/pg.log start",
