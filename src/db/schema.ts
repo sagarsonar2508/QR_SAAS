@@ -20,6 +20,8 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   googleId: text("google_id").unique(),
   plan: text("plan").notNull().default("free"),
+  // "user" | "admin" — gates the /admin panel. ADMIN_EMAILS can also grant it.
+  role: text("role").notNull().default("user"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

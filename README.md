@@ -45,6 +45,32 @@ Two providers behind one interface, split by the customer's currency: **Razorpay
 
 Setup, architecture and the go-live checklist: **[docs/BILLING.md](docs/BILLING.md)**.
 
+## Admin panel
+
+`/admin` — an internal, consolidated view of the business. Five pages:
+
+| Page | What it answers |
+|---|---|
+| **Overview** | MRR/ARR, paying customers, ARPU, activation rate, signup and scan trends, plan mix |
+| **Users** | Every account with plan, subscription state, QR and scan counts; searchable and filterable |
+| **Revenue** | MRR by tier, currency, provider and period; subscription states; recent subscriptions |
+| **Content** | QR types, top QR codes, scan geography, devices, OS, referrers, suites, feedback ratings |
+| **System** | Provider configuration, currencies you can actually charge, webhook deliveries, subscriptions needing attention |
+
+Access is granted by `users.role = 'admin'` **or** by listing an address in
+`ADMIN_EMAILS`. Non-admins get a 404 rather than a redirect, so the panel isn't
+discoverable by URL. Grant the first admin with `ADMIN_EMAILS=you@example.com`,
+or directly:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+```
+
+Revenue spans six currencies, so the panel normalises to INR using estimated
+rates (override with `FX_RATES_INR`). Those figures are for steering, not
+accounting — they read prices from the code, and ignore discounts, refunds,
+taxes and provider fees. Payout statements are the authority on earnings.
+
 ## Google login
 
 Wired but dormant. Create an OAuth client in Google Cloud Console (redirect URI: `{APP_URL}/api/auth/google/callback`), fill `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, and the button appears on the login/signup pages.

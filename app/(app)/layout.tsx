@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { QrCode, LogOut } from "lucide-react";
+import { QrCode, LogOut, ShieldCheck } from "lucide-react";
 import { getSessionUser } from "@/lib/auth";
+import { isAdminUser } from "@/lib/admin/auth";
 import { SidebarNav, MobileNav } from "@/components/AppNav";
 
 // Private app surface — keep it out of search results.
@@ -57,10 +58,18 @@ export default async function AppLayout({
               </button>
             </form>
           </div>
-          <p className="px-2 pt-1.5">
+          <p className="px-2 pt-1.5 flex items-center gap-1.5">
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-600 bg-indigo-50 rounded-full px-2 py-0.5">
               {user.plan} plan
             </span>
+            {isAdminUser(user) && (
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-white bg-gray-900 hover:bg-gray-700 rounded-full px-2 py-0.5"
+              >
+                <ShieldCheck className="w-3 h-3" /> Admin
+              </Link>
+            )}
           </p>
         </div>
       </aside>
