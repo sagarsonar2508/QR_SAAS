@@ -4,8 +4,8 @@ import { getSessionUser } from "@/lib/auth";
 import {
   PAID_TIERS,
   billingConfigured,
-  ensureRazorpayPlan,
-  razorpay,
+  billingCurrency,
+  providerForCurrency,
   type Period,
   type Tier,
 } from "@/lib/billing";
@@ -13,6 +13,7 @@ import {
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   if (!billingConfigured()) {
     return NextResponse.json(
       { error: "Payments aren't configured yet — you're on the free pilot." },
@@ -27,26 +28,43 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unknown plan" }, { status: 400 });
   }
 
-  const planId = await ensureRazorpayPlan(tier, period);
-  const sub = await razorpay<{ id: string }>("/subscriptions", {
-    plan_id: planId,
-    // Razorpay requires a fixed number of cycles; 10 years of billing.
-    total_count: period === "monthly" ? 120 : 10,
-    customer_notify: 1,
-    notes: { userId: user.id, tier, period },
-  });
+  // Resolved server-side from geo/cookie, never taken from the request body —
+  // otherwise a client could pick whichever currency is cheapest.
+  const currency = await billingCurrency();
+  const provider = providerForCurrency(currency);
+  if (!provider) {
+    return NextResponse.json(
+      { error: `No payment provider available for ${currency}.` },
+      { status: 400 }
+    );
+  }
 
-  await db.insert(subscriptions).values({
-    userId: user.id,
+  const origin = process.env.APP_URL ?? new URL(req.url).origin;
+
+  const { session, providerSubscriptionId } = await provider.createCheckout({
     tier,
     period,
-    razorpaySubscriptionId: sub.id,
-    status: "created",
+    currency,
+    user: { id: user.id, email: user.email, name: user.name },
+    returnUrl: `${origin}/billing?checkout=complete`,
   });
 
-  return NextResponse.json({
-    subscriptionId: sub.id,
-    keyId: process.env.RAZORPAY_KEY_ID,
-    tierName: tier,
-  });
+  // Providers that mint the subscription up front get a row now; hosted-checkout
+  // providers create theirs from the webhook, once the user actually pays.
+  if (providerSubscriptionId) {
+    await db
+      .insert(subscriptions)
+      .values({
+        userId: user.id,
+        provider: provider.id,
+        tier,
+        period,
+        currency,
+        providerSubscriptionId,
+        status: "created",
+      })
+      .onConflictDoNothing();
+  }
+
+  return NextResponse.json({ session });
 }

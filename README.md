@@ -33,14 +33,17 @@ There is a seeded test account from the verification run: `test@example.com` / `
 
 The feedback QR redirects to a hosted star-rating page (`/f/{code}`). Feedback is stored privately; **every** respondent then sees the Google-review link (no rating-based gating — that would violate Google's review policy).
 
-## Billing (Razorpay)
+## Billing
 
-Dormant until `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` are set in `.env` — until then the app runs in **free pilot mode** with no plan limits. Once configured:
+Two providers behind one interface, split by the customer's currency: **Razorpay** for INR (UPI Autopay, Indian settlement) and **Paddle** for USD/EUR/GBP/AUD/CAD (merchant of record, so VAT/sales tax is Paddle's problem, not ours). Configure either, both or neither — with neither, the app runs in **free pilot mode** with no plan limits.
 
-- Plans: Free (3 QRs) / Starter ₹299 (25) / Business ₹699 (100) / Agency ₹2,999 (1,000), monthly or annual.
-- Razorpay Plans are created lazily via the API on first subscribe (no dashboard setup needed).
-- Checkout runs client-side; `/api/billing/verify` confirms the payment signature for instant activation; the webhook (`/api/billing/webhook`, configure in the Razorpay dashboard) is the source of truth for renewals, failures and cancellations.
+- Plans: Free (3 QRs) / Starter (25) / Business (100) / Agency (1,000), monthly or annual, priced per market in each currency.
+- Currency is resolved server-side from the CDN geo header, overridable by the visitor, and always clamped to what a configured provider can actually settle.
+- Provider plans/prices are created lazily on first checkout — no dashboard setup.
+- Webhooks are the source of truth for renewals, failures and cancellations, one route per provider, deduplicated by event id.
 - QR creation returns 402 with an upgrade prompt when the plan limit is hit.
+
+Setup, architecture and the go-live checklist: **[docs/BILLING.md](docs/BILLING.md)**.
 
 ## Google login
 

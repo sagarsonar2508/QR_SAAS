@@ -510,7 +510,7 @@ export const DOCS: DocPage[] = [
       { t: "h2", text: "Upgrading" },
       {
         t: "p",
-        text: "Go to **Billing**, pick a plan and pay by UPI, card or netbanking (payments are processed by Razorpay). Monthly and annual billing are available — annual saves roughly two months. Your new quota applies immediately.",
+        text: "Go to **Billing**, pick a plan and pay. In India you can pay by UPI Autopay, card or netbanking (processed by Razorpay); everywhere else, card and local methods are handled by Paddle, our merchant of record, and prices are shown in your local currency. Monthly and annual billing are available — annual saves roughly two months. Your new quota applies immediately.",
       },
       { t: "h2", text: "Cancelling & downgrading" },
       {

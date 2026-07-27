@@ -21,6 +21,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { getSessionUser } from "@/lib/auth";
+import { TIERS, billingCurrency, formatMoney } from "@/lib/billing";
 import HeroDemo from "@/components/landing/HeroDemo";
 import Reveal from "@/components/landing/Reveal";
 
@@ -77,11 +78,12 @@ const TYPES = [
   { icon: Contact, label: "Contact Card" },
 ];
 
+// Prices come from TIERS at render time in the visitor's currency; only the
+// marketing copy lives here.
 const PLANS = [
   {
-    key: "free",
+    key: "free" as const,
     name: "Free",
-    price: "₹0",
     period: "forever",
     tagline: "Try it out",
     features: ["3 dynamic QR codes", "Scan analytics", "All QR types", "PNG & SVG export"],
@@ -89,9 +91,8 @@ const PLANS = [
     highlight: false,
   },
   {
-    key: "starter",
+    key: "starter" as const,
     name: "Starter",
-    price: "₹299",
     period: "/month",
     tagline: "Freelancers & single shops",
     features: [
@@ -104,9 +105,8 @@ const PLANS = [
     highlight: false,
   },
   {
-    key: "business",
+    key: "business" as const,
     name: "Business",
-    price: "₹699",
     period: "/month",
     tagline: "Restaurants & retailers",
     features: [
@@ -119,9 +119,8 @@ const PLANS = [
     highlight: true,
   },
   {
-    key: "agency",
+    key: "agency" as const,
     name: "Agency",
-    price: "₹2,999",
     period: "/month",
     tagline: "Agencies & print shops",
     features: [
@@ -163,6 +162,7 @@ const CHART_BARS = [35, 55, 40, 70, 62, 85, 78, 95, 88, 100, 92, 110];
 export default async function LandingPage() {
   const user = await getSessionUser();
   const appHref = user ? "/dashboard" : "/signup";
+  const currency = await billingCurrency();
 
   const siteUrl = process.env.APP_URL ?? "http://localhost:3003";
   const jsonLd = [
@@ -183,7 +183,7 @@ export default async function LandingPage() {
       url: siteUrl,
       description:
         "Create dynamic QR codes you can edit anytime — with scan analytics, time-based scheduling, device targeting, WhatsApp, UPI and menu QRs.",
-      offers: { "@type": "Offer", price: "0", priceCurrency: "INR" },
+      offers: { "@type": "Offer", price: "0", priceCurrency: currency },
     },
     {
       "@context": "https://schema.org",
@@ -484,7 +484,9 @@ export default async function LandingPage() {
                   <h3 className="font-semibold">{p.name}</h3>
                   <p className="text-xs text-gray-400">{p.tagline}</p>
                   <p className="mt-4">
-                    <span className="text-3xl font-extrabold">{p.price}</span>
+                    <span className="text-3xl font-extrabold">
+                      {formatMoney(TIERS[p.key].prices[currency].monthly, currency)}
+                    </span>
                     <span className="text-gray-400 text-sm"> {p.period}</span>
                   </p>
                   <ul className="mt-5 space-y-2.5 flex-1">

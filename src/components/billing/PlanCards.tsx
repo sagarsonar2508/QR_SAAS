@@ -4,12 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 
+import { formatMoney, type Currency } from "@/lib/billing/tiers";
+
 type TierInfo = {
   key: string;
   name: string;
   tagline: string;
   features: string[];
-  monthly: number; // paise
+  // Minor units of the active currency.
+  monthly: number;
   yearly: number;
 };
 
@@ -19,7 +22,12 @@ declare global {
   }
 }
 
-function loadCheckout(): Promise<void> {
+// Mirrors CheckoutSession in @/lib/billing/provider.
+type CheckoutSession =
+  | { kind: "razorpay"; subscriptionId: string; keyId: string }
+  | { kind: "redirect"; url: string };
+
+function loadRazorpayCheckout(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (window.Razorpay) return resolve();
     const s = document.createElement("script");
@@ -30,17 +38,16 @@ function loadCheckout(): Promise<void> {
   });
 }
 
-const rupees = (paise: number) =>
-  `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-
 export default function PlanCards({
   tiers,
+  currency,
   currentPlan,
   configured,
   email,
   name,
 }: {
   tiers: TierInfo[];
+  currency: Currency;
   currentPlan: string;
   configured: boolean;
   email: string;
@@ -63,10 +70,18 @@ export default function PlanCards({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not start checkout");
 
-      await loadCheckout();
+      const session = data.session as CheckoutSession;
+      // Hosted checkout (Paddle): hand the browser over and let the return URL
+      // bring them back. Keep `busy` set — the page is navigating away.
+      if (session.kind === "redirect") {
+        window.location.href = session.url;
+        return;
+      }
+
+      await loadRazorpayCheckout();
       new window.Razorpay!({
-        key: data.keyId,
-        subscription_id: data.subscriptionId,
+        key: session.keyId,
+        subscription_id: session.subscriptionId,
         name: "QRVeda",
         description: `${tierKey} plan (${period})`,
         prefill: { email, name },
@@ -75,7 +90,7 @@ export default function PlanCards({
           const v = await fetch("/api/billing/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(resp),
+            body: JSON.stringify({ ...resp, provider: "razorpay" }),
           });
           if (v.ok) {
             router.refresh();
@@ -132,7 +147,7 @@ export default function PlanCards({
               <p className="text-xs text-gray-500">{t.tagline}</p>
               <p className="mt-3">
                 <span className="text-2xl font-extrabold text-gray-900">
-                  {rupees(price)}
+                  {formatMoney(price, currency)}
                 </span>
                 <span className="text-sm text-gray-500">
                   {isFree ? "" : period === "monthly" ? "/month" : "/year"}

@@ -9,6 +9,7 @@ import {
   bigserial,
   integer,
   index,
+  uniqueIndex,
   primaryKey,
 } from "drizzle-orm/pg-core";
 
@@ -127,14 +128,46 @@ export const feedback = pgTable(
   (t) => [index("feedback_qr_idx").on(t.qrId, t.createdAt)]
 );
 
+// Provider plan/price objects, created lazily on first checkout and cached here
+// so no manual dashboard setup is needed.
+//
+// `currency` is the scope the cached plan is priced in. Razorpay needs one plan
+// per currency (it only ever has "INR"); Paddle expresses every currency as
+// overrides on a single price, so it stores the sentinel "*" — see
+// MULTI_CURRENCY in lib/billing/provider.
 export const billingPlans = pgTable(
   "billing_plans",
   {
+    provider: text("provider").notNull(),
     tier: text("tier").notNull(),
     period: text("period").notNull(),
-    razorpayPlanId: text("razorpay_plan_id").notNull(),
+    currency: text("currency").notNull(),
+    providerPlanId: text("provider_plan_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.tier, t.period] })]
+  (t) => [primaryKey({ columns: [t.provider, t.tier, t.period, t.currency] })]
+);
+
+// Maps our users onto the provider's own customer records. Needed for hosted
+// checkout (so repeat purchases reuse a customer) and for portal sessions.
+export const billingCustomers = pgTable(
+  "billing_customers",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    providerCustomerId: text("provider_customer_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.provider] }),
+    index("billing_customers_provider_idx").on(t.provider, t.providerCustomerId),
+  ]
 );
 
 export const subscriptions = pgTable(
@@ -144,10 +177,12 @@ export const subscriptions = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull().default("razorpay"),
     tier: text("tier").notNull(),
     period: text("period").notNull(),
-    razorpaySubscriptionId: text("razorpay_subscription_id").notNull().unique(),
-    // created → active → cancelling → cancelled | halted
+    currency: text("currency").notNull().default("INR"),
+    providerSubscriptionId: text("provider_subscription_id").notNull(),
+    // created → active → cancelling → cancelled | halted | past_due | paused
     status: text("status").notNull().default("created"),
     currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -157,7 +192,29 @@ export const subscriptions = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("subscriptions_user_idx").on(t.userId)]
+  (t) => [
+    index("subscriptions_user_idx").on(t.userId),
+    // Ids are only unique within a provider, not across them.
+    uniqueIndex("subscriptions_provider_sub_idx").on(
+      t.provider,
+      t.providerSubscriptionId
+    ),
+  ]
+);
+
+// Providers retry webhooks, and a retry must not double-apply. Every delivery
+// records its event id here first; a conflict means we've already handled it.
+export const webhookEvents = pgTable(
+  "webhook_events",
+  {
+    provider: text("provider").notNull(),
+    eventId: text("event_id").notNull(),
+    eventType: text("event_type").notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.provider, t.eventId] })]
 );
 
 export type User = typeof users.$inferSelect;
@@ -166,3 +223,4 @@ export type Scan = typeof scans.$inferSelect;
 export type Suite = typeof suites.$inferSelect;
 export type Feedback = typeof feedback.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
+export type BillingCustomer = typeof billingCustomers.$inferSelect;
