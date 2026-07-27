@@ -16,31 +16,14 @@
  */
 import postgres from "postgres";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { databaseUrl, projectRoot, redact } from "./db-url.mjs";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const dir = join(root, "drizzle");
+const dir = join(projectRoot, "drizzle");
 const dryRun = process.argv.includes("--dry");
 
-function databaseUrl() {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
-
-  // Local convenience only; on a server DATABASE_URL should come from the
-  // environment, not a checked-out .env file.
-  const envFile = join(root, ".env");
-  if (existsSync(envFile)) {
-    const match = readFileSync(envFile, "utf8").match(/^DATABASE_URL=(.*)$/m);
-    if (match) return match[1].trim();
-  }
-
-  console.error("DATABASE_URL is not set.");
-  process.exit(1);
-}
-
 const url = databaseUrl();
-const redacted = url.replace(/:\/\/([^:]+):[^@]*@/, "://$1:***@");
-console.log(`Database: ${redacted}`);
+console.log(`Database: ${redact(url)}`);
 
 const files = existsSync(dir)
   ? readdirSync(dir)
