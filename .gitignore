@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.env
+.pgdata/
+uploads/
+drizzle/
+*.log
+.DS_Store
+package-lock.json

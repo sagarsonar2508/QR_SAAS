@@ -1,0 +1,16 @@
+# Optional: production-like local Postgres (requires Docker Desktop).
+# Local dev also works without Docker via the embedded Postgres:  npm run db:start
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: qrveda
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
