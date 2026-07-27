@@ -52,24 +52,33 @@ export async function GET(req: Request) {
   };
 
   const email = info.email.toLowerCase();
-  let [user] = await db.select().from(users).where(eq(users.googleId, info.id)).limit(1);
-  if (!user) {
-    // Link by email if the user signed up with a password first.
-    const [byEmail] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (byEmail) {
-      [user] = await db
-        .update(users)
-        .set({ googleId: info.id })
-        .where(eq(users.id, byEmail.id))
-        .returning();
-    } else {
-      [user] = await db
-        .insert(users)
-        .values({ email, name: info.name ?? email.split("@")[0], googleId: info.id })
-        .returning();
+  try {
+    let [user] = await db.select().from(users).where(eq(users.googleId, info.id)).limit(1);
+    if (!user) {
+      // Link by email if the user signed up with a password first.
+      const [byEmail] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      if (byEmail) {
+        [user] = await db
+          .update(users)
+          .set({ googleId: info.id })
+          .where(eq(users.id, byEmail.id))
+          .returning();
+      } else {
+        [user] = await db
+          .insert(users)
+          .values({ email, name: info.name ?? email.split("@")[0], googleId: info.id })
+          .returning();
+      }
     }
+
+    await createSession(user.id);
+  } catch (err) {
+    // A pending migration (users.google_id) or any other database fault used to
+    // surface as a bare 500 on Google's redirect back, with nothing to go on but
+    // the server log. Send them to the login page instead, and log the cause.
+    console.error("google oauth callback failed:", err);
+    return NextResponse.redirect(new URL("/login?error=oauth-failed", req.url));
   }
 
-  await createSession(user.id);
   return NextResponse.redirect(new URL("/dashboard", req.url));
 }
