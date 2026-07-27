@@ -202,6 +202,14 @@ export const subscriptions = pgTable(
   ]
 );
 
+// Bookkeeping for scripts/migrate.mjs — which SQL files this database has had
+// applied. Declared here purely so `drizzle-kit push` recognises it as ours and
+// doesn't offer to drop it as drift; the runner creates it on its own.
+export const migrationsTable = pgTable("_migrations", {
+  name: text("name").primaryKey(),
+  appliedAt: timestamp("applied_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Providers retry webhooks, and a retry must not double-apply. Every delivery
 // records its event id here first; a conflict means we've already handled it.
 export const webhookEvents = pgTable(
