@@ -1,6 +1,9 @@
 node_modules/
 .next/
-.env
+# Every env file is ignored (.env, .env.local, .env.production…) except the
+# committed template.
+.env*
+!.env.example
 .pgdata/
 uploads/
 # drizzle/ holds hand-written SQL migrations that must deploy with the code.

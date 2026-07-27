@@ -4,19 +4,23 @@ import { fileURLToPath } from "node:url";
 
 export const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** DATABASE_URL from the environment, falling back to the local .env file.
- *  On a server the environment should supply it; the .env fallback is a local
- *  development convenience. */
+/** DATABASE_URL from the environment, falling back to env files.
+ *
+ *  `.env.local` is checked before `.env`, matching Next.js' own precedence — so
+ *  these scripts and the app always agree on which database they're talking to.
+ *  Keeping them in sync matters: a migration run against the wrong database is
+ *  hard to notice and worse to undo. */
 export function databaseUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
 
-  const envFile = join(projectRoot, ".env");
-  if (existsSync(envFile)) {
-    const match = readFileSync(envFile, "utf8").match(/^DATABASE_URL=(.*)$/m);
-    if (match) return match[1].trim();
+  for (const file of [".env.local", ".env"]) {
+    const path = join(projectRoot, file);
+    if (!existsSync(path)) continue;
+    const match = readFileSync(path, "utf8").match(/^DATABASE_URL=(.*)$/m);
+    if (match?.[1].trim()) return match[1].trim();
   }
 
-  console.error("DATABASE_URL is not set.");
+  console.error("DATABASE_URL is not set (checked env, .env.local, .env).");
   process.exit(1);
 }
 
