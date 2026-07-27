@@ -4,7 +4,7 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
-const SITE_URL = process.env.APP_URL ?? "http://localhost:3000";
+const SITE_URL = process.env.APP_URL ?? "http://localhost:3003";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

@@ -6,7 +6,7 @@ import { buildStaticContent } from "./qr-types";
 import { renderHalftoneQrSvg, renderQrSvg } from "./qr-render";
 
 export function appUrl() {
-  return process.env.APP_URL ?? "http://localhost:3000";
+  return process.env.APP_URL ?? "http://localhost:3003";
 }
 
 /** The string actually encoded in the QR image. Dynamic QRs encode the

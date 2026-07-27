@@ -50,7 +50,7 @@ Also shipped (25 July 2026):
   FAQPage on /docs/faq, Article on posts), noindex on app//f//print pages, docs+blog
   links in landing nav and a 3-column footer. All docs/blog pages statically generated.
 
-Run it: `npm run db:start && npm run dev` → http://localhost:3000
+Run it: `npm run db:start && npm run dev` → http://localhost:3003
 Individual done/pending items are marked ✅ / 🔲 throughout §3.1 below.
 
 ---

@@ -164,7 +164,7 @@ export default async function LandingPage() {
   const user = await getSessionUser();
   const appHref = user ? "/dashboard" : "/signup";
 
-  const siteUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const siteUrl = process.env.APP_URL ?? "http://localhost:3003";
   const jsonLd = [
     {
       "@context": "https://schema.org",

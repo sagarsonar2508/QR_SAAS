@@ -12,7 +12,7 @@ Next.js 15 (App Router, full-stack) · PostgreSQL 16 · Drizzle ORM · Tailwind 
 npm install
 npm run db:start     # embedded Postgres 16 on port 5433 (data in .pgdata/)
 npm run db:push      # sync schema (first run / after schema changes)
-npm run dev          # http://localhost:3000
+npm run dev          # http://localhost:3003
 ```
 
 `npm run db:stop` stops the database. Docker users can run `docker compose up -d` instead (same port/credentials) — the app only cares about `DATABASE_URL` in `.env`.
