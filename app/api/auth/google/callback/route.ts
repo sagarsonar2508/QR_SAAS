@@ -5,11 +5,14 @@ import { db, users } from "@/db";
 import { createSession } from "@/lib/auth";
 import { appUrl } from "@/lib/qr-image";
 
+// Every redirect here is based on appUrl(), never req.url: behind the reverse
+// proxy the incoming URL is http://localhost:3003, so a req.url-relative
+// redirect lands the browser on a port only the server itself can reach.
 export async function GET(req: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(new URL("/login?error=google-not-configured", req.url));
+    return NextResponse.redirect(new URL("/login?error=google-not-configured", appUrl()));
   }
 
   const url = new URL(req.url);
@@ -20,7 +23,7 @@ export async function GET(req: Request) {
   store.delete("oauth_state");
 
   if (!code || !state || state !== expectedState) {
-    return NextResponse.redirect(new URL("/login?error=oauth-failed", req.url));
+    return NextResponse.redirect(new URL("/login?error=oauth-failed", appUrl()));
   }
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -35,7 +38,7 @@ export async function GET(req: Request) {
     }),
   });
   if (!tokenRes.ok) {
-    return NextResponse.redirect(new URL("/login?error=oauth-failed", req.url));
+    return NextResponse.redirect(new URL("/login?error=oauth-failed", appUrl()));
   }
   const tokens = (await tokenRes.json()) as { access_token: string };
 
@@ -43,7 +46,7 @@ export async function GET(req: Request) {
     headers: { Authorization: `Bearer ${tokens.access_token}` },
   });
   if (!infoRes.ok) {
-    return NextResponse.redirect(new URL("/login?error=oauth-failed", req.url));
+    return NextResponse.redirect(new URL("/login?error=oauth-failed", appUrl()));
   }
   const info = (await infoRes.json()) as {
     id: string;
@@ -77,8 +80,8 @@ export async function GET(req: Request) {
     // surface as a bare 500 on Google's redirect back, with nothing to go on but
     // the server log. Send them to the login page instead, and log the cause.
     console.error("google oauth callback failed:", err);
-    return NextResponse.redirect(new URL("/login?error=oauth-failed", req.url));
+    return NextResponse.redirect(new URL("/login?error=oauth-failed", appUrl()));
   }
 
-  return NextResponse.redirect(new URL("/dashboard", req.url));
+  return NextResponse.redirect(new URL("/dashboard", appUrl()));
 }

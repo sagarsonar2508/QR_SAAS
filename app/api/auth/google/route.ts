@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
     return NextResponse.redirect(
-      new URL("/login?error=google-not-configured", req.url)
+      new URL("/login?error=google-not-configured", appUrl())
     );
   }
 
