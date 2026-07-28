@@ -19,17 +19,17 @@ export const BUSINESS = {
   /** The legal person behind the service. For a sole proprietor in India this
    *  is your own full name — a proprietorship is not a separate registration,
    *  you are a proprietor by default the moment you trade as an individual. */
-  legalName: "TODO_LEGAL_NAME",
+  legalName: "Sagar Sonar",
 
   /** "proprietor" | "company" | "llp" — controls the wording used. */
   entityType: "proprietor" as "proprietor" | "company" | "llp",
 
   /** Where you operate from. A city and state is the minimum; payment gateways
    *  generally want a full address during KYC. */
-  address: "TODO_ADDRESS",
+  address: "Bhandup, Mumbai, Maharashtra, India",
 
   /** Support address customers and gateways can actually reach. */
-  supportEmail: "TODO_SUPPORT_EMAIL",
+  supportEmail: "qrveda@gmail.com",
 
   /** Optional. Leave empty to omit from the pages. */
   phone: "",
@@ -39,7 +39,7 @@ export const BUSINESS = {
   gstin: "",
 
   /** Courts of this city govern disputes. Normally where you're based. */
-  jurisdiction: "TODO_CITY",
+  jurisdiction: "Mumbai",
 
   /** Country of operation. */
   country: "India",
