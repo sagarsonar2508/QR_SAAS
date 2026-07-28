@@ -1,13 +1,13 @@
 # Dynamic QR Platform — Revised Business & Build Plan
 
-**Working name:** TBD (pick a short, brandable domain — the redirect domain IS your brand on every printed QR)
+**Working name:** QRVeda — qrveda.com registered (BigRock) and live behind Cloudflare
 **Author:** Sagar
 **Date:** July 2026
-**Status:** Core app built (see Build Status below) · Validation pending
+**Status:** Core app built and deployed at qrveda.com · Razorpay live (INR) · Validation pending
 
 ---
 
-## Build Status — updated 10 July 2026
+## Build Status — updated 28 July 2026
 
 The core product from Phase 1 is **built, running and verified end-to-end** (✅ = done, 🔲 = not yet):
 Next.js 15 full-stack app · Postgres 16 (embedded for dev, `DATABASE_URL` for prod) · Drizzle ORM.
@@ -50,8 +50,42 @@ Also shipped (25 July 2026):
   FAQPage on /docs/faq, Article on posts), noindex on app//f//print pages, docs+blog
   links in landing nav and a 3-column footer. All docs/blog pages statically generated.
 
+Also shipped (27–28 July 2026):
+- **Global payments architecture** — billing rewritten behind a `BillingProvider`
+  interface (`src/lib/billing/`). Razorpay handles INR; a Paddle adapter (merchant of
+  record, so VAT/sales tax is theirs) covers USD/EUR/GBP/AUD/CAD. Six-currency price
+  table, geo-resolved currency clamped to what a configured provider can actually
+  settle, per-provider webhook routes with event-id idempotency, `users.plan`
+  recomputed from live subscriptions rather than written from the event, hosted
+  customer portal where the provider offers one. Razorpay subscriptions carry an
+  `app` note so one Razorpay account can serve several products without cross-talk.
+  Schema migrated (`drizzle/0001`) off Razorpay-specific column names.
+- **Migration runner** — `npm run db:migrate` applies `drizzle/*.sql` in order,
+  tracked in `_migrations`; safe on every deploy. Renames must live here, not in
+  `drizzle-kit push`, which treats a rename as drop + add.
+- **Admin panel** (`/admin`, `drizzle/0002`) — Overview (MRR/ARR/ARPU, activation,
+  growth), Users (searchable, filterable), Revenue (by tier/currency/provider/period),
+  Content (QR types, top codes, geo, devices, feedback), System (provider config,
+  webhook deliveries, entitlement drift). Access via `users.role` or `ADMIN_EMAILS`;
+  non-admins get a 404. Multi-currency revenue normalised to INR at overridable rates.
+- **Legal pages** — `/terms`, `/privacy`, `/refund`, `/contact`, generated from
+  `src/lib/legal/business.ts`. Required for payment-gateway review.
+- **Cloudflare** — DNS + proxy live on qrveda.com. Fixes country/city capture (was
+  always NULL on a bare VPS) and therefore currency routing. `cf-ipcountry` is the
+  single trusted geo header; the fallbacks were removed because a client could forge
+  them to buy at Indian prices.
+- **Auth hardening** (`drizzle/0003`) — email verification on signup (gates QR
+  creation, fails open when SMTP is unset), password reset, password-changed notices,
+  all over nodemailer/SMTP. Tokens stored as SHA-256 hashes, single-use, expiring.
+  Fixed-window rate limiting on every auth and write endpoint, keyed on
+  `CF-Connecting-IP`; the redirect hot path is deliberately exempt.
+- **Checkout intent** — pricing CTAs carry the chosen plan through signup (and the
+  Google round trip) straight into checkout, instead of dropping people on the
+  dashboard having forgotten what they clicked.
+
 Run it: `npm run db:start && npm run dev` → http://localhost:3003
 Individual done/pending items are marked ✅ / 🔲 throughout §3.1 below.
+**Outstanding work is tracked in §3.4 — read that before starting anything new.**
 
 ---
 
@@ -112,7 +146,7 @@ Everything in this phase exists to serve the customers from Phase 0. If a featur
 ### 3.1 Core (must-have)
 
 **Auth & Accounts**
-- ✅ Email + password. ✅ Google OAuth (fully wired; activates when `GOOGLE_CLIENT_ID`/`SECRET` are set in `.env`).
+- ✅ Email + password with email verification and password reset (nodemailer/SMTP). ✅ Google OAuth (activates when `GOOGLE_CLIENT_ID`/`SECRET` are set).
 - 🔲 Organizations with owner/member roles (agencies need this immediately; keep roles simple: owner, member).
 
 **Dynamic QR engine (the heart)**
@@ -130,7 +164,7 @@ Everything in this phase exists to serve the customers from Phase 0. If a featur
 *Menu, Instagram, Google Review, etc. are just Website/PDF QRs with templates — add as presets, not as engineering work.*
 
 **Scan analytics**
-- ✅ Per scan: timestamp, device type, OS, browser, referrer, hashed IP. Country/city from CDN/proxy headers; 🔲 self-hosted MaxMind GeoLite2 for accurate geo everywhere.
+- ✅ Per scan: timestamp, device type, OS, browser, referrer, hashed IP. ✅ Country/city from Cloudflare (`cf-ipcountry`/`cf-ipcity`) — verified capturing e.g. "Mumbai, IN". MaxMind no longer needed.
 - ✅ Written after the response is sent (`after()`) — never in the redirect hot path. 🔲 Move to a real queue (BullMQ) at scale.
 - ✅ Dashboard: total QRs, total scans, scans today, top QR, daily chart (30 days), per-QR breakdown with recent-scans table, top cities, device split (ECharts). 🔲 CSV export. 🔲 90-day view.
 
@@ -148,18 +182,53 @@ Everything in this phase exists to serve the customers from Phase 0. If a featur
 - Feedback QR → rating form → all feedback stored privately → *after submission*, every respondent sees a "Review us on Google" link.
 - **We do NOT gate** (i.e., we don't show the Google link only to happy customers). Gating violates Google review policy and can get customers' listings penalized and our domain flagged. Sell it as "feedback capture + review nudge" — 90% of the value, none of the risk. Document this stance; customers will ask for gating.
 
-**Billing** — ✅ built (dormant until Razorpay keys are set; free pilot mode until then)
-- Razorpay subscriptions (UPI autopay + cards). Plans below. Manual invoicing acceptable for the first 10 customers — do not block launch on billing polish.
+**Billing** — ✅ built, live on Razorpay (INR); Paddle adapter written but not yet enabled
+- ✅ Provider-agnostic (`BillingProvider`), six currencies, geo-routed and clamped to
+  what a configured provider can settle. ✅ Webhooks idempotent per event id.
+- 🔲 End-to-end test against real Razorpay (subscribe → webhook → cancel → downgrade).
+- 🔲 Paddle: business verification, one sandbox run, real non-INR prices (the numbers
+  in `tiers.ts` are placeholders).
+- 🔲 Mid-cycle upgrades/downgrades with proration — today you cancel and resubscribe.
 
 **Abuse & trust (non-negotiable, most plans forget this)**
-- 🔲 Signup throttling + email verification.
+- ✅ Signup throttling + email verification (gates QR creation; fails open with no SMTP).
+- ✅ Rate limiting on auth and all write endpoints (per IP, and per email on login).
 - 🔲 Destination URL checks against phishing patterns; block URL shorteners as destinations. (Basic URL-shape validation ✅.)
 - ✅ Kill switch per QR (pause → 410 page). 🔲 Per-account kill switch + abuse-report page on the redirect domain.
 - 🔲 **Separate domains:** app on one domain, redirects on another. If the redirect domain is ever blacklisted (Safe Browsing), the business survives. (Deploy-time decision — code already treats the redirect path as standalone.)
-- 🔲 Rate limiting on redirect endpoint.
+- ⛔ Rate limiting on the redirect endpoint — **deliberately not done.** A popular QR
+  code is supposed to be hit hard; throttling scans breaks printed material. Cloudflare
+  absorbs volumetric abuse instead.
 
 **Ops** — 🔲 at deploy time
-- Error tracking (self-hosted Sentry or GlitchTip), uptime monitoring on the redirect endpoint, daily Postgres backups, structured logs.
+- 🔲 **Daily Postgres backups, off the box.** Highest-value item left — nothing else on
+  this list matters if the database is lost.
+- 🔲 Error tracking (self-hosted GlitchTip or Sentry free tier). Errors currently reach
+  server logs only, so a broken redirect is reported by a customer, not by monitoring.
+- 🔲 Uptime monitoring on the redirect endpoint.
+- 🔲 Uploads still on local disk (`uploads/`) — not backed up, lost on server rebuild.
+  Swap to object storage behind the same `/files/` URL.
+- ✅ Cloudflare in front (proxy, TLS, geo headers, DDoS absorption).
+
+### 3.4 Outstanding — ranked (as of 28 July 2026)
+
+**Blocking real users**
+1. 🔲 **Postgres backups.** Unrecoverable if skipped. `pg_dump` nightly, off-server, with a tested restore.
+2. 🔲 **SMTP credentials on the server.** Verification and reset emails are built but send nothing without them. The verification gate fails open meanwhile, so signup still works — but nobody can reset a forgotten password.
+3. 🔲 **Error monitoring.**
+4. 🔲 **Payment flow tested end to end** on live Razorpay.
+
+**Before meaningful revenue**
+5. 🔲 **Tests.** None exist. Billing and `redirect-rules` first — both were verified by hand and nothing prevents regression.
+6. 🔲 **Uploads to object storage.**
+7. 🔲 **Self-serve account deletion** — the privacy policy promises deletion on request; today it's manual.
+8. 🔲 **Paddle enablement** (verification, sandbox run, real prices) before selling outside India.
+
+**Housekeeping**
+9. 🔲 Delete the dead `GEOIP_DB_PATH` env var — Cloudflare supplies geo now.
+10. 🔲 Rename one of the two `drizzle/0003_*.sql` files to `0004_` so ordering is unambiguous.
+11. 🔲 2FA on the Cloudflare account (it controls production DNS).
+12. 🔲 `deploy/nginx-cloudflare.conf` not yet installed — optional; only affects nginx's own logs now that the app reads `CF-Connecting-IP` directly.
 
 ### 3.2 Explicitly cut from MVP
 Password-protected QRs, expiring QRs, scheduled/geo/language/device redirects, A/B testing, UTM builder, bulk Excel upload, campaigns, heatmaps, notifications, health checks, digital business cards, API, webhooks, SSO, audit logs, EPS/PDF export, "AI" anything. **All of it waits for paying-customer pull.**
