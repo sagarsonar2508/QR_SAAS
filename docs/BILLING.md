@@ -50,6 +50,37 @@ visitor is quoted and the price Paddle charges cannot drift apart.
 Adding a currency: extend the `Currency` union in `tiers.ts`. TypeScript then
 requires a price for every tier, so a half-filled currency can't ship.
 
+#### The geolocation header is a trust boundary
+
+Which country we think a visitor is in decides **which currency they are
+charged**, so the header carrying it is security-relevant, not just analytics.
+
+`countryFromHeaders()` trusts exactly **one** header — `cf-ipcountry` by default,
+overridable with `GEO_COUNTRY_HEADER` — and accepts only a bare two-letter code.
+Fallback headers were removed deliberately: accepting several means accepting the
+weakest, and a client that sends `x-country-code: IN` would otherwise buy at
+Indian prices from anywhere.
+
+**Code alone is not sufficient.** A CDN will happily forward a client-supplied
+`cf-ipcountry` unless told otherwise — verified against production. The CDN must
+overwrite it:
+
+> Cloudflare → **Rules → Transform Rules → Modify Request Header**
+> - *Remove*: `x-country-code`, `x-vercel-ip-country`, `x-vercel-ip-city`
+> - *Set dynamic*: `cf-ipcountry` = `ip.src.country`
+
+`deploy/nginx-cloudflare.conf` adds the same stripping at the origin, plus
+`real_ip_header CF-Connecting-IP` so scan analytics record real visitor IPs
+instead of Cloudflare's edge.
+
+To confirm the boundary holds, from outside:
+
+```bash
+curl -s -H 'x-country-code: IN' https://qrveda.com | grep -oE '[₹$][0-9,]+' | head -2
+```
+
+Indian prices coming back means the boundary is open.
+
 ### Webhooks
 
 One route per provider, because each signs deliveries differently:

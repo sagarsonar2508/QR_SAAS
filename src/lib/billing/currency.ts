@@ -1,22 +1,16 @@
 import { cookies, headers } from "next/headers";
 import { DEFAULT_CURRENCY, type Currency } from "./tiers";
-import { currencyForCountry, parseCurrency } from "./countries";
+import { countryFromHeaders, currencyForCountry, parseCurrency } from "./countries";
 
 /** Set by the currency switcher so a visitor can override what geo picked. */
 export const CURRENCY_COOKIE = "currency";
 
 export * from "./countries";
 
-/** Two-letter country from whatever CDN sits in front of us. Null in local dev,
+/** Two-letter country from the CDN. Null in local dev, where no CDN sets it —
  *  which is why the cookie override exists. */
 export async function requestCountry(): Promise<string | null> {
-  const h = await headers();
-  return (
-    h.get("x-vercel-ip-country") ??
-    h.get("cf-ipcountry") ??
-    h.get("x-country-code") ??
-    null
-  );
+  return countryFromHeaders(await headers());
 }
 
 /** The currency to price in: an explicit choice beats geo, and both are clamped

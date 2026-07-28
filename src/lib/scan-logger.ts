@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import { UAParser } from "ua-parser-js";
 import { db, scans } from "@/db";
+import { countryFromHeaders } from "@/lib/billing/countries";
 
 /** Best-effort scan logging — must never break the redirect path.
- *  Geo comes from proxy/CDN headers when present (Cloud Run / Vercel / CF);
- *  a self-hosted GeoLite2 lookup can be added behind GEOIP_DB_PATH later. */
+ *  Geo comes from the CDN header the app trusts for geolocation (see
+ *  countryFromHeaders); null when no CDN sits in front. */
 export async function logScan(qrId: string, req: Request) {
   try {
     const uaString = req.headers.get("user-agent") ?? "";
@@ -12,11 +13,9 @@ export async function logScan(qrId: string, req: Request) {
     const ip = (req.headers.get("x-forwarded-for") ?? "")
       .split(",")[0]
       .trim();
-    const country =
-      req.headers.get("x-vercel-ip-country") ??
-      req.headers.get("cf-ipcountry") ??
-      req.headers.get("x-country-code");
-    const city = req.headers.get("x-vercel-ip-city");
+    const country = countryFromHeaders(req.headers);
+    const city =
+      req.headers.get("cf-ipcity") ?? req.headers.get("x-vercel-ip-city");
     const secret = process.env.SESSION_SECRET ?? "";
     await db.insert(scans).values({
       qrId,
