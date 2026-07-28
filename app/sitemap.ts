@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { DOCS } from "@/lib/marketing/docs-content";
 import { POSTS } from "@/lib/marketing/blog-content";
+import { LEGAL_DOCS } from "@/lib/legal/content";
 import { appUrl } from "@/lib/qr-image";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -45,5 +46,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.3,
     },
+    ...LEGAL_DOCS.map((d) => ({
+      url: `${base}/${d.slug}`,
+      lastModified: now,
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    })),
   ];
 }

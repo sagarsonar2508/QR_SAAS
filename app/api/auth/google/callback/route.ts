@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, users } from "@/db";
 import { createSession } from "@/lib/auth";
 import { appUrl } from "@/lib/qr-image";
+import { safeNextPath } from "@/lib/next-path";
 
 // Every redirect here is based on appUrl(), never req.url: behind the reverse
 // proxy the incoming URL is http://localhost:3003, so a req.url-relative
@@ -83,5 +84,8 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/login?error=oauth-failed", appUrl()));
   }
 
-  return NextResponse.redirect(new URL("/dashboard", appUrl()));
+  // Resume the pricing CTA the visitor started from, if there was one.
+  const next = safeNextPath(store.get("oauth_next")?.value);
+  store.delete("oauth_next");
+  return NextResponse.redirect(new URL(next, appUrl()));
 }

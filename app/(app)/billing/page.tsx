@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { db, subscriptions } from "@/db";
 import { getSessionUser } from "@/lib/auth";
 import {
+  PAID_TIERS,
   TIERS,
   availableCurrencies,
   billingConfigured,
@@ -25,10 +26,10 @@ const MANAGEABLE = ["active", "trialing", "past_due", "cancelling", "paused"];
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout?: string }>;
+  searchParams: Promise<{ checkout?: string; plan?: string; period?: string }>;
 }) {
   const user = (await getSessionUser())!;
-  const { checkout } = await searchParams;
+  const { checkout, plan: requestedPlan, period: requestedPeriod } = await searchParams;
   const configured = billingConfigured();
   const quota = await checkQrQuota(user.id, user.plan, 0);
   const tier = TIERS[(user.plan as Tier) in TIERS ? (user.plan as Tier) : "free"];
@@ -133,6 +134,12 @@ export default async function BillingPage({
         configured={configured}
         email={user.email}
         name={user.name}
+        autoStart={
+          requestedPlan && PAID_TIERS.includes(requestedPlan as Exclude<Tier, "free">)
+            ? requestedPlan
+            : null
+        }
+        autoPeriod={requestedPeriod === "yearly" ? "yearly" : "monthly"}
       />
     </div>
   );

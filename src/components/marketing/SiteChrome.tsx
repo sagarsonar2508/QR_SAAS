@@ -86,9 +86,19 @@ export function SiteFooter() {
             </ul>
           </div>
         </div>
-        <p className="text-xs text-gray-400 mt-8 pt-6 border-t border-gray-200">
-          © {new Date().getFullYear()} QRVeda. All rights reserved.
-        </p>
+        {/* Payment providers check that these are reachable from the site, not
+            just that the URLs exist — keep them linked here. */}
+        <div className="mt-8 pt-6 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-gray-400">
+            © {new Date().getFullYear()} QRVeda. All rights reserved.
+          </p>
+          <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-gray-500">
+            <li><Link href="/terms" className="hover:text-gray-900">Terms</Link></li>
+            <li><Link href="/privacy" className="hover:text-gray-900">Privacy</Link></li>
+            <li><Link href="/refund" className="hover:text-gray-900">Refunds</Link></li>
+            <li><Link href="/contact" className="hover:text-gray-900">Contact</Link></li>
+          </ul>
+        </div>
       </div>
     </footer>
   );

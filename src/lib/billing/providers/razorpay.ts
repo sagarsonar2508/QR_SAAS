@@ -12,6 +12,21 @@ import type {
 
 const PROVIDER = "razorpay";
 
+/** Tags every subscription this app creates, so we can tell our events apart
+ *  from other products sharing the same Razorpay account.
+ *
+ *  Razorpay webhooks are scoped by event type, not by website: every endpoint
+ *  subscribed to `subscription.*` receives those events for the whole account.
+ *  A separate webhook secret per endpoint only proves Razorpay sent the request
+ *  — it does not say which product the subscription belongs to. Without this
+ *  tag, another site's renewals arrive here and get logged as unattributable,
+ *  drowning the one signal that means a real customer didn't get their plan.
+ *
+ *  Set RAZORPAY_APP_TAG to something unique per product. */
+function appTag() {
+  return process.env.RAZORPAY_APP_TAG ?? "qrveda";
+}
+
 function keyId() {
   return process.env.RAZORPAY_KEY_ID!;
 }
@@ -134,7 +149,10 @@ export const razorpayProvider: BillingProvider = {
       // Razorpay requires a fixed number of cycles; 10 years of billing.
       total_count: period === "monthly" ? 120 : 10,
       customer_notify: 1,
-      notes: { userId: user.id, tier, period },
+      // `app` lets the webhook handler ignore other products sharing this
+      // Razorpay account. Notes travel with the subscription entity on every
+      // subsequent event.
+      notes: { app: appTag(), userId: user.id, tier, period },
     });
     return {
       session: { kind: "razorpay", subscriptionId: sub.id, keyId: keyId() },
@@ -183,6 +201,11 @@ export const razorpayProvider: BillingProvider = {
     const entity = event.payload?.subscription?.entity;
     const base = { eventId, eventType: event.event };
     if (!entity?.id) return { ...base, state: null };
+
+    // Belongs to another product on this Razorpay account — acknowledge and
+    // drop it. Untagged subscriptions are treated as foreign too: everything
+    // this app creates carries the tag, so an absent one cannot be ours.
+    if (entity.notes?.app !== appTag()) return { ...base, state: null };
 
     const currentPeriodEnd = entity.current_end
       ? new Date(entity.current_end * 1000)

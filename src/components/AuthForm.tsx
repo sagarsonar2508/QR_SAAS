@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { QrCode, Loader2 } from "lucide-react";
+import { safeNextPath } from "@/lib/next-path";
 
 export default function AuthForm({
   mode,
@@ -23,6 +24,12 @@ export default function AuthForm({
   );
   const [loading, setLoading] = useState(false);
 
+  // Preserve the plan the visitor picked across every hop of the auth flow —
+  // switching between login/signup, and the round trip through Google.
+  const next = safeNextPath(params.get("next"));
+  const withNext = (path: string) =>
+    next === "/dashboard" ? path : `${path}?next=${encodeURIComponent(next)}`;
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -35,7 +42,8 @@ export default function AuthForm({
       body: JSON.stringify(body),
     });
     if (res.ok) {
-      router.push("/dashboard");
+      // Someone who clicked a pricing CTA lands on checkout, not the dashboard.
+      router.push(safeNextPath(params.get("next")));
       router.refresh();
     } else {
       const data = await res.json().catch(() => ({}));
@@ -126,7 +134,7 @@ export default function AuthForm({
                 <div className="h-px bg-gray-200 flex-1" />
               </div>
               <a
-                href="/api/auth/google"
+                href={withNext("/api/auth/google")}
                 className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-2.5 text-sm font-medium flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -157,14 +165,14 @@ export default function AuthForm({
           {mode === "login" ? (
             <>
               New here?{" "}
-              <Link href="/signup" className="text-indigo-600 font-medium">
+              <Link href={withNext("/signup")} className="text-indigo-600 font-medium">
                 Create an account
               </Link>
             </>
           ) : (
             <>
               Already have an account?{" "}
-              <Link href="/login" className="text-indigo-600 font-medium">
+              <Link href={withNext("/login")} className="text-indigo-600 font-medium">
                 Log in
               </Link>
             </>

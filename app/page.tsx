@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { getSessionUser } from "@/lib/auth";
 import { TIERS, billingCurrency, formatMoney } from "@/lib/billing";
+import { planCtaHref } from "@/lib/next-path";
 import HeroDemo from "@/components/landing/HeroDemo";
 import Reveal from "@/components/landing/Reveal";
 
@@ -89,6 +90,7 @@ const PLANS = [
     features: ["3 dynamic QR codes", "Scan analytics", "All QR types", "PNG & SVG export"],
     cta: "Start free",
     highlight: false,
+    contactSales: false,
   },
   {
     key: "starter" as const,
@@ -103,6 +105,7 @@ const PLANS = [
     ],
     cta: "Get started",
     highlight: false,
+    contactSales: false,
   },
   {
     key: "business" as const,
@@ -117,6 +120,7 @@ const PLANS = [
     ],
     cta: "Get started",
     highlight: true,
+    contactSales: false,
   },
   {
     key: "agency" as const,
@@ -131,6 +135,10 @@ const PLANS = [
     ],
     cta: "Talk to us",
     highlight: false,
+    // Agency buyers get a conversation rather than self-serve checkout, so this
+    // CTA goes to /contact. Self-serve is still available from the billing page
+    // for anyone who'd rather just pay.
+    contactSales: true,
   },
 ];
 
@@ -497,7 +505,7 @@ export default async function LandingPage() {
                     ))}
                   </ul>
                   <Link
-                    href={appHref}
+                    href={p.contactSales ? "/contact" : planCtaHref(p.key, Boolean(user))}
                     className={`block text-center rounded-lg py-2.5 text-sm font-semibold mt-6 transition-colors ${
                       p.highlight
                         ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200"
@@ -597,9 +605,19 @@ export default async function LandingPage() {
               </ul>
             </div>
           </div>
-          <p className="text-xs text-gray-400 mt-8 pt-6 border-t border-gray-200">
-            © {new Date().getFullYear()} QRVeda. All rights reserved.
-          </p>
+          {/* Payment providers check that the policies are reachable from the
+              site during review, not merely that the URLs resolve. */}
+          <div className="mt-8 pt-6 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-gray-400">
+              © {new Date().getFullYear()} QRVeda. All rights reserved.
+            </p>
+            <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-gray-500">
+              <li><Link href="/terms" className="hover:text-gray-900">Terms</Link></li>
+              <li><Link href="/privacy" className="hover:text-gray-900">Privacy</Link></li>
+              <li><Link href="/refund" className="hover:text-gray-900">Refunds</Link></li>
+              <li><Link href="/contact" className="hover:text-gray-900">Contact</Link></li>
+            </ul>
+          </div>
         </div>
       </footer>
     </div>

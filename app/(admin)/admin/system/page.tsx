@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { systemStats } from "@/lib/admin/stats";
 import { adminBootstrapConfigured } from "@/lib/admin/auth";
+import { outstandingFields } from "@/lib/legal/business";
 import { availableCurrencies, getProvider, isProviderId } from "@/lib/billing";
 import { CURRENCIES } from "@/lib/billing/tiers";
 import { Card, Empty, Pill, TableWrap, Td, Th, statusTone } from "@/components/admin/ui";
@@ -131,6 +132,16 @@ export default async function AdminSystemPage() {
               ok
               label="Panel visibility"
               detail="Non-admins get a 404, so the panel isn't discoverable by URL."
+            />
+            <Health
+              ok={outstandingFields().length === 0}
+              warn={outstandingFields().length > 0}
+              label="Legal pages"
+              detail={
+                outstandingFields().length === 0
+                  ? "Terms, Privacy, Refund and Contact are complete."
+                  : `Still placeholder: ${outstandingFields().join(", ")}. Payment providers check these during review — fill src/lib/legal/business.ts.`
+              }
             />
           </div>
         </Card>

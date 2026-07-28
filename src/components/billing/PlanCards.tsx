@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 
@@ -45,6 +45,8 @@ export default function PlanCards({
   configured,
   email,
   name,
+  autoStart,
+  autoPeriod,
 }: {
   tiers: TierInfo[];
   currency: Currency;
@@ -52,11 +54,15 @@ export default function PlanCards({
   configured: boolean;
   email: string;
   name: string;
+  /** Plan the visitor chose on the pricing page, to open checkout for on arrival. */
+  autoStart?: string | null;
+  autoPeriod?: "monthly" | "yearly";
 }) {
   const router = useRouter();
-  const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
+  const [period, setPeriod] = useState<"monthly" | "yearly">(autoPeriod ?? "monthly");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const started = useRef(false);
 
   async function subscribe(tierKey: string) {
     setError(null);
@@ -106,6 +112,18 @@ export default function PlanCards({
       setBusy(null);
     }
   }
+
+  // Someone who clicked "Get started" on the pricing page arrives here having
+  // already chosen — open checkout for them instead of making them pick twice.
+  // Guarded by a ref so a re-render can never open a second checkout.
+  useEffect(() => {
+    if (!autoStart || started.current) return;
+    if (!configured || autoStart === currentPlan) return;
+    if (!tiers.some((t) => t.key === autoStart)) return;
+    started.current = true;
+    subscribe(autoStart);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   return (
     <div>
