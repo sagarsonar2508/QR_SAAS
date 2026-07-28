@@ -105,14 +105,25 @@ export default function AuthForm({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
+              <div className="flex items-baseline justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                {mode === "login" && (
+                  <Link
+                    href="/forgot"
+                    className="text-xs text-indigo-600 hover:text-indigo-800"
+                  >
+                    Forgot password?
+                  </Link>
+                )}
+              </div>
               <input
                 name="password"
                 type="password"
                 required
                 minLength={8}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="At least 8 characters"
               />

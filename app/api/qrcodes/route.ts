@@ -9,10 +9,27 @@ import {
   validatePayload,
 } from "@/lib/qr-types";
 import { parseRedirectRules } from "@/lib/redirect-rules";
+import { POLICIES, enforce } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const limited = enforce(req, "qr-create", POLICIES.write, user.id);
+  if (limited) return limited;
+
+  // Unverified accounts can't publish redirects. This is the anti-abuse gate:
+  // a link shortener that anyone can use anonymously becomes a phishing host,
+  // and the reputation damage lands on our redirect domain.
+  if (!user.emailVerifiedAt) {
+    return NextResponse.json(
+      {
+        error: "Confirm your email address before creating QR codes.",
+        needsVerification: true,
+      },
+      { status: 403 }
+    );
+  }
 
   const quota = await checkQrQuota(user.id, user.plan);
   if (!quota.ok) {

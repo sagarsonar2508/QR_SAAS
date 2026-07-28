@@ -2,15 +2,20 @@ import { NextResponse } from "next/server";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, subscriptions } from "@/db";
 import { getSessionUser } from "@/lib/auth";
+import { POLICIES, enforce } from "@/lib/rate-limit";
 import { getProvider, isProviderId } from "@/lib/billing";
 
 // Mints a fresh, authenticated link to the provider's own billing portal, where
 // the customer can update their payment method, download invoices and cancel.
 // Portal links are short-lived and single-customer, so they're created per click
 // and never cached.
-export async function POST() {
+export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Every call mints a fresh session at the provider.
+  const limited = enforce(req, "portal", POLICIES.billing, user.id);
+  if (limited) return limited;
 
   const [sub] = await db
     .select()

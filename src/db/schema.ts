@@ -22,10 +22,38 @@ export const users = pgTable("users", {
   plan: text("plan").notNull().default("free"),
   // "user" | "admin" — gates the /admin panel. ADMIN_EMAILS can also grant it.
   role: text("role").notNull().default("user"),
+  // Null until the address is confirmed. Google sign-ups are verified on sight.
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
+
+// Single-use tokens for email verification and password reset.
+//
+// Only the SHA-256 hash is stored. A leaked backup then contains nothing that
+// can be replayed against the app, the same reason passwords are hashed.
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // "verify" | "reset"
+    kind: text("kind").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("auth_tokens_hash_idx").on(t.tokenHash),
+    index("auth_tokens_user_kind_idx").on(t.userId, t.kind),
+  ]
+);
 
 export const suites = pgTable(
   "suites",

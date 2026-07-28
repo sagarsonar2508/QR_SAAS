@@ -2,8 +2,14 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db, users } from "@/db";
 import { createSession, hashPassword } from "@/lib/auth";
+import { issueToken, pruneExpiredTokens } from "@/lib/auth-tokens";
+import { sendMail, verificationEmail, mailConfigured } from "@/lib/mailer";
+import { POLICIES, enforce } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  const limited = enforce(req, "signup", POLICIES.signup);
+  if (limited) return limited;
+
   const body = await req.json().catch(() => null);
   const name = (body?.name ?? "").trim();
   const email = (body?.email ?? "").trim().toLowerCase();
@@ -19,7 +25,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+  const existing = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
   if (existing.length > 0) {
     return NextResponse.json(
       { error: "An account with this email already exists" },
@@ -31,8 +41,22 @@ export async function POST(req: Request) {
   const [user] = await db
     .insert(users)
     .values({ name, email, passwordHash })
-    .returning({ id: users.id });
+    .returning({ id: users.id, name: users.name, email: users.email });
 
+  // Signed in immediately — an unverified account can look around, it just
+  // can't create QR codes until the address is confirmed. Blocking sign-in
+  // outright would strand anyone whose verification email is slow.
   await createSession(user.id);
-  return NextResponse.json({ ok: true });
+
+  const token = await issueToken(user.id, "verify");
+  const mail = verificationEmail(user.name, token);
+  const sent = await sendMail({ ...mail, to: user.email });
+  void pruneExpiredTokens();
+
+  return NextResponse.json({
+    ok: true,
+    // Lets the client say "check your inbox" only when that's actually true.
+    verificationSent: sent,
+    mailConfigured: mailConfigured(),
+  });
 }

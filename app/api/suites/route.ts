@@ -3,6 +3,7 @@ import { db, qrCodes, suites } from "@/db";
 import { getSessionUser } from "@/lib/auth";
 import { checkQrQuota } from "@/lib/billing";
 import { newShortCode, RESERVED_CODES } from "@/lib/shortcode";
+import { POLICIES, enforce } from "@/lib/rate-limit";
 
 function code() {
   let c = newShortCode();
@@ -18,6 +19,21 @@ const isUrl = (v: unknown): v is string =>
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // One request here mints many QR codes, so it's capped harder than a single
+  // create and gated on verification for the same anti-abuse reason.
+  const limited = enforce(req, "suite-create", POLICIES.billing, user.id);
+  if (limited) return limited;
+
+  if (!user.emailVerifiedAt) {
+    return NextResponse.json(
+      {
+        error: "Confirm your email address before creating QR codes.",
+        needsVerification: true,
+      },
+      { status: 403 }
+    );
+  }
 
   const body = await req.json().catch(() => null);
   const name = String(body?.name ?? "").trim();

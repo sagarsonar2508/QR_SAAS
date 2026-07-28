@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, subscriptions } from "@/db";
 import { getSessionUser } from "@/lib/auth";
+import { POLICIES, enforce } from "@/lib/rate-limit";
 import {
   PAID_TIERS,
   billingConfigured,
@@ -13,6 +14,10 @@ import {
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Each call creates objects at the payment provider, so it must be bounded.
+  const limited = enforce(req, "subscribe", POLICIES.billing, user.id);
+  if (limited) return limited;
 
   if (!billingConfigured()) {
     return NextResponse.json(

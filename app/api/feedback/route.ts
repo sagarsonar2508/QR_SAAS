@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { and, count, eq, gte } from "drizzle-orm";
 import { db, feedback, qrCodes } from "@/db";
+import { POLICIES, enforce } from "@/lib/rate-limit";
 
 // Public endpoint — receives ratings from the hosted feedback page.
 export async function POST(req: Request) {
+  // Unauthenticated and public, so this is the easiest endpoint to flood.
+  const limited = enforce(req, "feedback", POLICIES.feedback);
+  if (limited) return limited;
+
   const body = await req.json().catch(() => null);
   const code = String(body?.code ?? "");
   const rating = Number(body?.rating);
