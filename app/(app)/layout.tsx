@@ -6,6 +6,7 @@ import { getSessionUser } from "@/lib/auth";
 import { isAdminUser } from "@/lib/admin/auth";
 import { SidebarNav, MobileNav } from "@/components/AppNav";
 import VerifyBanner from "@/components/VerifyBanner";
+import { mailConfigured } from "@/lib/mailer";
 
 // Private app surface — keep it out of search results.
 export const metadata: Metadata = {
@@ -93,7 +94,7 @@ export default async function AppLayout({
 
       <main className="md:pl-60">
         <div className="max-w-6xl mx-auto p-4 pb-24 md:p-8">
-          {!user.emailVerifiedAt && <VerifyBanner email={user.email} />}
+          {!user.emailVerifiedAt && mailConfigured() && <VerifyBanner email={user.email} />}
           {children}
         </div>
       </main>

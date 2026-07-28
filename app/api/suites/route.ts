@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { checkQrQuota } from "@/lib/billing";
 import { newShortCode, RESERVED_CODES } from "@/lib/shortcode";
 import { POLICIES, enforce } from "@/lib/rate-limit";
+import { mailConfigured } from "@/lib/mailer";
 
 function code() {
   let c = newShortCode();
@@ -25,7 +26,8 @@ export async function POST(req: Request) {
   const limited = enforce(req, "suite-create", POLICIES.billing, user.id);
   if (limited) return limited;
 
-  if (!user.emailVerifiedAt) {
+  // Fails open when SMTP is unconfigured — see the note in api/qrcodes.
+  if (!user.emailVerifiedAt && mailConfigured()) {
     return NextResponse.json(
       {
         error: "Confirm your email address before creating QR codes.",

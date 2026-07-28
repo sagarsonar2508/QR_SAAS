@@ -10,6 +10,7 @@ import {
 } from "@/lib/qr-types";
 import { parseRedirectRules } from "@/lib/redirect-rules";
 import { POLICIES, enforce } from "@/lib/rate-limit";
+import { mailConfigured } from "@/lib/mailer";
 
 export async function POST(req: Request) {
   const user = await getSessionUser();
@@ -21,7 +22,11 @@ export async function POST(req: Request) {
   // Unverified accounts can't publish redirects. This is the anti-abuse gate:
   // a link shortener that anyone can use anonymously becomes a phishing host,
   // and the reputation damage lands on our redirect domain.
-  if (!user.emailVerifiedAt) {
+  //
+  // Fails OPEN when SMTP isn't configured. Otherwise a deploy with no mail
+  // settings would let people sign up and then block every one of them from
+  // creating anything, with no way to verify — breaking the product silently.
+  if (!user.emailVerifiedAt && mailConfigured()) {
     return NextResponse.json(
       {
         error: "Confirm your email address before creating QR codes.",
