@@ -10,9 +10,15 @@ export async function logScan(qrId: string, req: Request) {
   try {
     const uaString = req.headers.get("user-agent") ?? "";
     const ua = UAParser(uaString);
-    const ip = (req.headers.get("x-forwarded-for") ?? "")
-      .split(",")[0]
-      .trim();
+    // CF-Connecting-IP is written by Cloudflare and cannot be forged through
+    // the proxy. X-Forwarded-For is a fallback for deployments without a CDN,
+    // but it is client-appendable — a visitor can prepend any address they like
+    // and control the first entry, which would let them evade the per-IP
+    // deduplication that unique-visitor counts rely on.
+    const ip = (
+      req.headers.get("cf-connecting-ip") ??
+      (req.headers.get("x-forwarded-for") ?? "").split(",")[0]
+    ).trim();
     const country = countryFromHeaders(req.headers);
     const city =
       req.headers.get("cf-ipcity") ?? req.headers.get("x-vercel-ip-city");
