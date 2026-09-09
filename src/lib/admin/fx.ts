@@ -1,18 +1,23 @@
-import type { Currency } from "@/lib/billing/tiers";
-
 /**
  * Static FX rates, expressed as INR per 1 unit of currency.
  *
- * Revenue arrives in six currencies; a single MRR number needs one unit. These
- * are ESTIMATES, not live rates — good enough to see whether MRR is 2 lakh or
- * 20 lakh, not good enough for accounting. Your provider payout statements are
- * the authority on what you actually earned.
+ * A single MRR number needs one unit. These are ESTIMATES, not live rates —
+ * good enough to see whether MRR is 2 lakh or 20 lakh, not good enough for
+ * accounting. Your provider payout statements are the authority on what you
+ * actually earned.
+ *
+ * DELIBERATELY KEYED BY STRING, NOT Currency. We only sell in INR and USD now,
+ * but this table converts historical `subscriptions.currency` values, and a row
+ * billed under an older price list outlives the list. Narrowing this to the
+ * sellable currencies would make those rows fall through to the 1:1 fallback in
+ * toInr and be counted as rupees — understating past revenue rather than
+ * failing loudly.
  *
  * Override without a deploy by setting FX_RATES_INR to a JSON object, e.g.
  *   FX_RATES_INR='{"USD":88.5,"EUR":95.2}'
  * Unlisted currencies keep the defaults below.
  */
-const DEFAULT_RATES_INR: Record<Currency, number> = {
+const DEFAULT_RATES_INR: Record<string, number> = {
   INR: 1,
   USD: 88,
   EUR: 95,

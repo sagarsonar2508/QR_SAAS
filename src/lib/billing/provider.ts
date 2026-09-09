@@ -1,6 +1,6 @@
 import type { Currency, Period, Tier } from "./tiers";
 
-export type ProviderId = "razorpay" | "paddle";
+export type ProviderId = "razorpay" | "paypal" | "paddle";
 
 /** billing_plans.currency value used by providers whose cached plan object
  *  covers every currency at once (Paddle prices carry per-country overrides,
@@ -84,8 +84,15 @@ export interface BillingProvider {
 
   /** Verify the signature and decode the delivery. Returns null when the
    *  signature doesn't check out — callers must treat that as a rejection, not
-   *  as an uninteresting event. */
-  parseWebhook(rawBody: string, headers: Headers): WebhookDelivery | null;
+   *  as an uninteresting event.
+   *
+   *  May be async: Razorpay and Paddle sign with an HMAC we can check locally,
+   *  but PayPal signs with a rotating cert, so verifying means calling PayPal
+   *  back. Callers must await the result. */
+  parseWebhook(
+    rawBody: string,
+    headers: Headers
+  ): WebhookDelivery | null | Promise<WebhookDelivery | null>;
 
   cancelSubscription(providerSubscriptionId: string): Promise<void>;
 

@@ -18,8 +18,12 @@ const PROVIDER = "paddle";
 const BASE_CURRENCY: Currency = "USD";
 
 /** Currencies Paddle settles for us. INR is Razorpay's job — Paddle is the
- *  rest-of-world provider. */
-const PADDLE_CURRENCIES: Currency[] = ["USD", "EUR", "GBP", "AUD", "CAD"];
+ *  rest-of-world provider.
+ *
+ *  USD only, matching the app-wide currency list in ../tiers. Paddle can price
+ *  per country and this adapter still builds the overrides, so widening this is
+ *  a matter of adding currencies there — not of changing code here. */
+const PADDLE_CURRENCIES: Currency[] = ["USD"];
 
 function apiKey() {
   return process.env.PADDLE_API_KEY!;

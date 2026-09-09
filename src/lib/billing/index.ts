@@ -2,8 +2,10 @@ import { count, eq } from "drizzle-orm";
 import { db, qrCodes } from "@/db";
 import { CURRENCIES, qrLimitFor, type Currency } from "./tiers";
 import { resolveCurrency } from "./currency";
+import { settlePlan } from "./apply";
 import type { BillingProvider, ProviderId } from "./provider";
 import { razorpayProvider } from "./providers/razorpay";
+import { paypalProvider } from "./providers/paypal";
 import { paddleProvider } from "./providers/paddle";
 
 export * from "./tiers";
@@ -13,9 +15,15 @@ export * from "./apply";
 
 /** Registration order is preference order: the first provider that can settle a
  *  given currency wins. Razorpay leads so Indian customers keep UPI Autopay
- *  rather than being routed to the merchant-of-record. */
+ *  rather than being routed to the merchant-of-record.
+ *
+ *  PayPal sits ahead of Paddle on USD because it is the rail that actually
+ *  works today — Paddle needs business verification first. Swap the two once
+ *  Paddle is live: as merchant of record it also handles EU/UK VAT, which
+ *  PayPal does not, and that liability grows with non-Indian revenue. */
 const PROVIDERS: Record<ProviderId, BillingProvider> = {
   razorpay: razorpayProvider,
+  paypal: paypalProvider,
   paddle: paddleProvider,
 };
 
@@ -69,7 +77,10 @@ export async function checkQrQuota(
   plan: string,
   adding = 1
 ): Promise<{ ok: boolean; used: number; limit: number }> {
-  const limit = qrLimitFor(plan);
+  // users.plan is a webhook-written cache and can outlive the subscription that
+  // set it — a PayPal cancellation is paid through a date, and no event fires
+  // when that date passes. Settle it here rather than trusting the column.
+  const limit = qrLimitFor(await settlePlan(userId, plan));
   const [row] = await db
     .select({ used: count() })
     .from(qrCodes)

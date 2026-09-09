@@ -12,6 +12,7 @@ import {
  * own scheme:
  *
  *   /api/billing/webhook/razorpay   x-razorpay-signature, HMAC over the raw body
+ *   /api/billing/webhook/paypal     paypal-transmission-*, verified by PayPal
  *   /api/billing/webhook/paddle     Paddle-Signature, HMAC over `${ts}:${body}`
  *
  * Register the matching URL and secret in each provider's dashboard.
@@ -33,7 +34,9 @@ export async function POST(
   // Must be the untouched body — every provider signs the exact bytes sent.
   const rawBody = await req.text();
 
-  const delivery = provider.parseWebhook(rawBody, req.headers);
+  // Awaited: PayPal verifies by calling PayPal back, so this is async there
+  // even though Razorpay and Paddle check an HMAC locally.
+  const delivery = await provider.parseWebhook(rawBody, req.headers);
   if (!delivery) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }

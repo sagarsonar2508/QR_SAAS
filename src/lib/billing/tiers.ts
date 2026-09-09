@@ -2,10 +2,19 @@ export type Tier = "free" | "starter" | "business" | "agency";
 export type Period = "monthly" | "yearly";
 
 /** Billing currencies. Adding one here makes TypeScript demand a price for
- *  every tier below, so a half-filled currency can't ship. */
-export type Currency = "INR" | "USD" | "EUR" | "GBP" | "AUD" | "CAD";
+ *  every tier below, so a half-filled currency can't ship.
+ *
+ *  TWO, deliberately. EUR/GBP/AUD/CAD were priced here but no configured
+ *  provider could settle them, so visitors in those countries were quoted a
+ *  fallback currency anyway. They are gone rather than left as dead prices:
+ *  the PayPal account holds USD, and a subscription charged in a currency the
+ *  account does not hold lands PENDING with
+ *  `RECEIVING_PREFERENCE_MANDATES_MANUAL_ACTION` unless auto-convert is on —
+ *  which is how every EUR sale on the sibling site silently failed. One foreign
+ *  currency is also one pricing decision to get right instead of five. */
+export type Currency = "INR" | "USD";
 
-export const CURRENCIES: Currency[] = ["INR", "USD", "EUR", "GBP", "AUD", "CAD"];
+export const CURRENCIES: Currency[] = ["INR", "USD"];
 
 /** Used for visitors we can't place, and for every country without its own
  *  entry in COUNTRY_CURRENCY (see ./currency). */
@@ -37,10 +46,6 @@ export const TIERS: Record<
     prices: {
       INR: { monthly: 0, yearly: 0 },
       USD: { monthly: 0, yearly: 0 },
-      EUR: { monthly: 0, yearly: 0 },
-      GBP: { monthly: 0, yearly: 0 },
-      AUD: { monthly: 0, yearly: 0 },
-      CAD: { monthly: 0, yearly: 0 },
     },
     features: ["3 dynamic QR codes", "Scan analytics", "All QR types", "PNG & SVG export"],
   },
@@ -51,10 +56,6 @@ export const TIERS: Record<
     prices: {
       INR: { monthly: 29900, yearly: 249900 },
       USD: { monthly: 900, yearly: 7500 },
-      EUR: { monthly: 900, yearly: 7500 },
-      GBP: { monthly: 700, yearly: 5900 },
-      AUD: { monthly: 1400, yearly: 11500 },
-      CAD: { monthly: 1200, yearly: 9900 },
     },
     features: [
       "25 dynamic QR codes",
@@ -70,10 +71,6 @@ export const TIERS: Record<
     prices: {
       INR: { monthly: 69900, yearly: 599900 },
       USD: { monthly: 1900, yearly: 15900 },
-      EUR: { monthly: 1900, yearly: 15900 },
-      GBP: { monthly: 1500, yearly: 12900 },
-      AUD: { monthly: 2900, yearly: 24500 },
-      CAD: { monthly: 2500, yearly: 20900 },
     },
     features: [
       "100 dynamic QR codes",
@@ -89,10 +86,6 @@ export const TIERS: Record<
     prices: {
       INR: { monthly: 299900, yearly: 2499900 },
       USD: { monthly: 7900, yearly: 65900 },
-      EUR: { monthly: 7900, yearly: 65900 },
-      GBP: { monthly: 6500, yearly: 54500 },
-      AUD: { monthly: 11900, yearly: 99900 },
-      CAD: { monthly: 10500, yearly: 87900 },
     },
     features: [
       "1,000 dynamic QR codes",
@@ -126,15 +119,9 @@ export function priceFor(tier: Tier, currency: Currency, period: Period): number
   return TIERS[tier].prices[currency][period];
 }
 
-// AUD and CAD deliberately use en-US so Intl renders the disambiguating "A$"
-// and "CA$" rather than a bare "$" that reads as US dollars.
 const LOCALES: Record<Currency, string> = {
   INR: "en-IN",
   USD: "en-US",
-  EUR: "en-IE",
-  GBP: "en-GB",
-  AUD: "en-US",
-  CAD: "en-US",
 };
 
 /** Formats a minor-unit amount for display. Safe in client components — this

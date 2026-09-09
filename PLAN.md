@@ -182,13 +182,41 @@ Everything in this phase exists to serve the customers from Phase 0. If a featur
 - Feedback QR → rating form → all feedback stored privately → *after submission*, every respondent sees a "Review us on Google" link.
 - **We do NOT gate** (i.e., we don't show the Google link only to happy customers). Gating violates Google review policy and can get customers' listings penalized and our domain flagged. Sell it as "feedback capture + review nudge" — 90% of the value, none of the risk. Document this stance; customers will ask for gating.
 
-**Billing** — ✅ built, live on Razorpay (INR); Paddle adapter written but not yet enabled
-- ✅ Provider-agnostic (`BillingProvider`), six currencies, geo-routed and clamped to
-  what a configured provider can settle. ✅ Webhooks idempotent per event id.
+**Billing** — ✅ built, live on Razorpay (INR); PayPal adapter written for USD; Paddle written but not enabled
+- ✅ Provider-agnostic (`BillingProvider`), geo-routed and clamped to what a
+  configured provider can settle. ✅ Webhooks idempotent per event id.
+- ✅ **Two currencies, INR + USD** (9 Sep 2026). EUR/GBP/AUD/CAD were priced with
+  no provider able to settle them, so those visitors were quoted a fallback
+  anyway; they're removed rather than left as dead prices. The PayPal account
+  holds USD, and a charge in a currency it doesn't hold lands PENDING with
+  `RECEIVING_PREFERENCE_MANDATES_MANUAL_ACTION` — the bug that silently killed
+  every EUR sale on daredate.in.
+- ✅ **PayPal Subscriptions adapter** (`providers/paypal.ts`) — catalog product →
+  billing plan → subscription, lazily created and cached like Razorpay's.
+  Webhook verification is a round trip to PayPal (rotating cert, no local HMAC),
+  which is why `parseWebhook` is now allowed to be async.
+- ✅ PayPal cancels immediately with no follow-up event, unlike Razorpay/Paddle
+  cancel-at-cycle-end. Handled: stored as `cancelling` with the paid-through
+  date, and `settlePlan()` drops the user on the next quota check once that date
+  passes. No cron needed.
+- 🔲 **PayPal credentials + webhook id on the server** — the adapter is dark
+  until `PAYPAL_*` is set. Needs QRVeda's own REST app, not the sibling sites'.
+- 🔲 **Real USD prices.** The USD numbers in `tiers.ts` are still placeholders,
+  and they're now the only foreign prices there are.
+- 🔲 Sandbox run: subscribe → webhook activates → cancel → downgrade at period end.
 - 🔲 End-to-end test against real Razorpay (subscribe → webhook → cancel → downgrade).
-- 🔲 Paddle: business verification, one sandbox run, real non-INR prices (the numbers
-  in `tiers.ts` are placeholders).
+- 🔲 Paddle: business verification, one sandbox run. Worth finishing for one
+  reason — as merchant of record it handles EU/UK VAT, which PayPal does not,
+  and that liability is ours at Agency pricing.
 - 🔲 Mid-cycle upgrades/downgrades with proration — today you cancel and resubscribe.
+
+**Razorpay account is shared** with daredate.in and cheekydeck.com
+(`rzp_live_SunBY…`). Two consequences: `RAZORPAY_APP_TAG` is load-bearing, not a
+precaution; and the account-level international-card block those sites hit
+(`pay_TPRw54u9Tt8jwr` → `international_transaction_not_allowed`) applies to
+QRVeda too. Razorpay's international support is for one-time Orders in any case —
+recurring mandates are INR-only — so "turn on Razorpay international" was never
+a route to selling abroad.
 
 **Abuse & trust (non-negotiable, most plans forget this)**
 - ✅ Signup throttling + email verification (gates QR creation; fails open with no SMTP).
@@ -222,7 +250,9 @@ Everything in this phase exists to serve the customers from Phase 0. If a featur
 5. 🔲 **Tests.** None exist. Billing and `redirect-rules` first — both were verified by hand and nothing prevents regression.
 6. 🔲 **Uploads to object storage.**
 7. 🔲 **Self-serve account deletion** — the privacy policy promises deletion on request; today it's manual.
-8. 🔲 **Paddle enablement** (verification, sandbox run, real prices) before selling outside India.
+8. 🔲 **PayPal go-live** — QRVeda's own REST app, `PAYPAL_*` on the server,
+   webhook subscribed, real USD prices, one sandbox run. The adapter is written
+   and builds; nothing sells abroad until this is done.
 
 **Housekeeping**
 9. 🔲 Delete the dead `GEOIP_DB_PATH` env var — Cloudflare supplies geo now.

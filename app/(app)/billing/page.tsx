@@ -84,7 +84,7 @@ export default async function BillingPage({
           <span>
             Payments aren&apos;t configured yet — the app is running in{" "}
             <strong>free pilot mode</strong> with no plan limits. Set{" "}
-            <code>RAZORPAY_*</code> for India and <code>PADDLE_*</code> for the rest
+            <code>RAZORPAY_*</code> for India and <code>PAYPAL_*</code> for the rest
             of the world in <code>.env</code> to go live. See{" "}
             <code>docs/BILLING.md</code>.
           </span>

@@ -8,7 +8,7 @@ import { Card, Empty, Pill, TableWrap, Td, Th, statusTone } from "@/components/a
 
 export const dynamic = "force-dynamic";
 
-const PROVIDER_IDS = ["razorpay", "paddle"] as const;
+const PROVIDER_IDS = ["razorpay", "paypal", "paddle"] as const;
 
 function Health({
   ok,
