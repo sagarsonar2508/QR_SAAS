@@ -12,3 +12,9 @@ drizzle/meta/
 *.log
 .DS_Store
 package-lock.json
+# Server address for the deploy script, not app secrets. The .example is committed.
+deploymentScript/deploy.env
+# Staging/rollback build directories used by deploymentScript/deploy-local.sh.
+.next-build/
+.next-prev/
+next-build.tar.gz
