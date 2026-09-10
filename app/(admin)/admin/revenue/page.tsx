@@ -161,7 +161,7 @@ export default async function AdminRevenuePage() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
-        <Card title="By provider" subtitle="Razorpay vs Paddle">
+        <Card title="By provider" subtitle="Razorpay (INR) vs PayPal (USD)">
           {r.byProvider.length ? (
             <dl className="divide-y divide-gray-100">
               {r.byProvider.map((p) => (
@@ -299,7 +299,7 @@ export default async function AdminRevenuePage() {
           <li>
             Amounts come from the <strong>price table in code</strong>, not from
             provider invoices. Discounts, refunds, failed collections, taxes and
-            Paddle&apos;s fees are <strong>not</strong> reflected. Payout statements
+            provider fees are <strong>not</strong> reflected. Payout statements
             are the authority on what you actually earned.
           </li>
           <li>

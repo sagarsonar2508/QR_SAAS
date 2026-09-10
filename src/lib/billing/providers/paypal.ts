@@ -140,9 +140,9 @@ async function api<T>(
  * `billing_plans`, so no manual dashboard setup is needed — same approach as
  * the Razorpay adapter.
  *
- * The cache row is scoped to USD rather than MULTI_CURRENCY: a PayPal billing
- * plan carries exactly one currency, so a second currency would need its own
- * plan object, not an override on this one.
+ * The cache row is scoped to USD because a PayPal billing plan carries exactly
+ * one currency: a second currency would need its own plan object, not an
+ * override on this one.
  */
 async function ensurePlan(
   tier: Exclude<Tier, "free">,
@@ -224,7 +224,7 @@ async function ensurePlan(
 /**
  * Ask PayPal whether a delivery is genuine.
  *
- * Unlike Razorpay and Paddle there is no local HMAC to check — PayPal signs
+ * Unlike Razorpay there is no local HMAC to check — PayPal signs
  * with a rotating cert, so verification means handing the transmission headers
  * plus the parsed event back to PayPal. This is why `parseWebhook` is async on
  * the BillingProvider interface. A handler that skips this is an
@@ -281,8 +281,8 @@ function mapStatus(status: string): { status: string; entitled: boolean } | null
   switch (status) {
     case "ACTIVE":
       return { status: "active", entitled: true };
-    // PayPal suspends after the payment-failure threshold. Treated like Paddle's
-    // past_due: keep them on the plan while they fix the card, because losing
+    // PayPal suspends after the payment-failure threshold. Recorded as past_due:
+    // keep them on the plan while they fix the card, because losing
     // access is how a recoverable billing hiccup becomes a cancellation.
     case "SUSPENDED":
       return { status: "past_due", entitled: true };
@@ -336,11 +336,6 @@ export const paypalProvider: BillingProvider = {
 
   supportedCurrencies: PAYPAL_CURRENCIES,
 
-  // PayPal has no per-customer portal API we can mint a scoped link into —
-  // subscribers manage billing inside their own PayPal account. The app's own
-  // cancel button is the self-service path, same as Razorpay.
-  hasPortal: false,
-
   isConfigured() {
     return Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
   },
@@ -390,8 +385,7 @@ export const paypalProvider: BillingProvider = {
     }
 
     // PayPal mints the subscription up front (status APPROVAL_PENDING), so the
-    // id is persisted now and the webhook activates it — same shape as Razorpay,
-    // unlike Paddle where the row only exists after payment.
+    // id is persisted now and the webhook activates it — same shape as Razorpay.
     return {
       session: { kind: "redirect", url: approve },
       providerSubscriptionId: sub.id,
@@ -433,16 +427,11 @@ export const paypalProvider: BillingProvider = {
 
   async cancelSubscription(providerSubscriptionId) {
     // PayPal stops billing immediately — there is no cancel-at-cycle-end as
-    // there is on Razorpay and Paddle. The customer keeps the plan until the
+    // there is on Razorpay. The customer keeps the plan until the
     // period they already paid for runs out; that is enforced on our side, via
     // the "cancelling" status recorded from the CANCELLED webhook.
     await api(`/v1/billing/subscriptions/${providerSubscriptionId}/cancel`, {
       body: { reason: "Cancelled by the customer in QRVeda." },
     });
-  },
-
-  /** No hosted portal — see `hasPortal`. */
-  async portalUrl() {
-    return null;
   },
 };

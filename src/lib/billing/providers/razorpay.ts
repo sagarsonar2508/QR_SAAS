@@ -128,7 +128,6 @@ export const razorpayProvider: BillingProvider = {
   // Razorpay settles into Indian bank accounts and cannot hold a recurring
   // mandate in any other currency.
   supportedCurrencies: ["INR"],
-  hasPortal: false,
 
   isConfigured() {
     return Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
@@ -246,11 +245,5 @@ export const razorpayProvider: BillingProvider = {
     await api(`/subscriptions/${providerSubscriptionId}/cancel`, {
       cancel_at_cycle_end: 1,
     });
-  },
-
-  /** Razorpay has no hosted customer portal; the app's own cancel button is the
-   *  self-service path. */
-  async portalUrl() {
-    return null;
   },
 };

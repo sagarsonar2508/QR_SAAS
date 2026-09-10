@@ -11,8 +11,8 @@ const ENTITLING = new Set(["active", "cancelling", "trialing", "past_due"]);
 
 /** Statuses that entitle only until the paid-for period actually runs out.
  *
- *  Razorpay and Paddle both cancel at cycle end and send a terminal event when
- *  it arrives, so their rows get downgraded by a webhook. PayPal has no
+ *  Razorpay cancels at cycle end and sends a terminal event when it arrives,
+ *  so its rows get downgraded by a webhook. PayPal has no
  *  cancel-at-cycle-end: it cancels on the spot and sends nothing further, even
  *  though the customer has paid through the current period. Without this check
  *  a PayPal cancellation would either strip access someone paid for (if treated

@@ -6,7 +6,6 @@ import { settlePlan } from "./apply";
 import type { BillingProvider, ProviderId } from "./provider";
 import { razorpayProvider } from "./providers/razorpay";
 import { paypalProvider } from "./providers/paypal";
-import { paddleProvider } from "./providers/paddle";
 
 export * from "./tiers";
 export * from "./provider";
@@ -14,17 +13,18 @@ export * from "./currency";
 export * from "./apply";
 
 /** Registration order is preference order: the first provider that can settle a
- *  given currency wins. Razorpay leads so Indian customers keep UPI Autopay
- *  rather than being routed to the merchant-of-record.
+ *  given currency wins. Razorpay leads so Indian customers keep UPI Autopay.
  *
- *  PayPal sits ahead of Paddle on USD because it is the rail that actually
- *  works today — Paddle needs business verification first. Swap the two once
- *  Paddle is live: as merchant of record it also handles EU/UK VAT, which
- *  PayPal does not, and that liability grows with non-Indian revenue. */
+ *  Two providers, one currency each, so nothing actually competes today — the
+ *  ordering only starts mattering if a second USD provider is ever added.
+ *
+ *  A merchant-of-record option (Paddle) was written and never enabled; it was
+ *  deleted on 10 Sep 2026. The one thing it would have bought is EU/UK VAT
+ *  registration and remittance, which PayPal does not do — that liability is
+ *  ours and grows with non-Indian revenue. See docs/BILLING.md. */
 const PROVIDERS: Record<ProviderId, BillingProvider> = {
   razorpay: razorpayProvider,
   paypal: paypalProvider,
-  paddle: paddleProvider,
 };
 
 export function getProvider(id: ProviderId): BillingProvider {

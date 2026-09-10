@@ -1,15 +1,10 @@
 import type { Currency, Period, Tier } from "./tiers";
 
-export type ProviderId = "razorpay" | "paypal" | "paddle";
-
-/** billing_plans.currency value used by providers whose cached plan object
- *  covers every currency at once (Paddle prices carry per-country overrides,
- *  so there is one price per tier+period, not one per currency). */
-export const MULTI_CURRENCY = "*";
+export type ProviderId = "razorpay" | "paypal";
 
 /** What the browser needs in order to complete checkout. Modal providers
  *  (Razorpay) hand back ids for their JS SDK; hosted-checkout providers
- *  (Stripe, Paddle) hand back a URL to send the user to. */
+ *  (PayPal) hand back a URL to send the user to. */
 export type CheckoutSession =
   | { kind: "razorpay"; subscriptionId: string; keyId: string }
   | { kind: "redirect"; url: string };
@@ -67,11 +62,6 @@ export interface BillingProvider {
    *  prices we're willing to display. */
   readonly supportedCurrencies: readonly Currency[];
 
-  /** Whether this provider offers a hosted billing portal. When true the app
-   *  hands off management entirely; when false it falls back to its own cancel
-   *  button. Lets the UI branch on capability rather than on provider name. */
-  readonly hasPortal: boolean;
-
   /** True once the provider's credentials are present in the environment. */
   isConfigured(): boolean;
 
@@ -86,18 +76,25 @@ export interface BillingProvider {
    *  signature doesn't check out — callers must treat that as a rejection, not
    *  as an uninteresting event.
    *
-   *  May be async: Razorpay and Paddle sign with an HMAC we can check locally,
-   *  but PayPal signs with a rotating cert, so verifying means calling PayPal
-   *  back. Callers must await the result. */
+   *  May be async: Razorpay signs with an HMAC we can check locally, but PayPal
+   *  signs with a rotating cert, so verifying means calling PayPal back.
+   *  Callers must await the result. */
   parseWebhook(
     rawBody: string,
     headers: Headers
   ): WebhookDelivery | null | Promise<WebhookDelivery | null>;
 
   cancelSubscription(providerSubscriptionId: string): Promise<void>;
-
-  /** A hosted page where the customer can manage payment method, invoices and
-   *  cancellation themselves. Null for providers that don't offer one, in which
-   *  case the app falls back to its own cancel button. */
-  portalUrl(userId: string): Promise<string | null>;
 }
+
+/* Removed with Paddle (10 Sep 2026): `hasPortal` and `portalUrl()`.
+ *
+ * Paddle was the only provider that ever had a hosted billing portal — Razorpay
+ * has none, and PayPal offers no per-customer link we can mint (subscribers
+ * manage billing inside their own PayPal account). With it gone the capability
+ * was false everywhere, so the app's own cancel button is now the single
+ * self-service path rather than one of two branches.
+ *
+ * Re-add both, plus app/api/billing/portal and components/billing/
+ * ManageBillingButton, if a provider with a real portal (Stripe, Paddle) is
+ * ever adopted. */

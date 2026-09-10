@@ -161,10 +161,10 @@ export const feedback = pgTable(
 // Provider plan/price objects, created lazily on first checkout and cached here
 // so no manual dashboard setup is needed.
 //
-// `currency` is the scope the cached plan is priced in. Razorpay needs one plan
-// per currency (it only ever has "INR"); Paddle expresses every currency as
-// overrides on a single price, so it stores the sentinel "*" — see
-// MULTI_CURRENCY in lib/billing/provider.
+// `currency` is the scope the cached plan is priced in, and it is part of the
+// primary key. Both current providers hold exactly one currency per plan object
+// — Razorpay "INR", PayPal "USD" — so a second currency on either would mint its
+// own row rather than modify an existing one.
 export const billingPlans = pgTable(
   "billing_plans",
   {

@@ -2,9 +2,8 @@ import { CURRENCIES, DEFAULT_CURRENCY, type Currency } from "./tiers";
 
 /** Countries billed in something other than DEFAULT_CURRENCY.
  *
- *  Single source of truth for geography → money. It decides what a visitor is
- *  quoted, and the Paddle adapter derives its per-country price overrides from
- *  the same map, so the quote and the charge cannot drift apart.
+ *  Single source of truth for geography → money: it decides what a visitor is
+ *  quoted, and therefore which provider takes the payment.
  *
  *  India is the only entry: it is the one market with its own rail (Razorpay,
  *  INR, UPI Autopay). Everywhere else is quoted USD and billed by PayPal, so
@@ -13,14 +12,6 @@ import { CURRENCIES, DEFAULT_CURRENCY, type Currency } from "./tiers";
 export const COUNTRY_CURRENCY: Record<string, Currency> = {
   IN: "INR",
 };
-
-/** Countries quoted in `currency`. Empty for DEFAULT_CURRENCY, which is the
- *  fallback for the entire rest of the world rather than an explicit list. */
-export function countriesFor(currency: Currency): string[] {
-  return Object.entries(COUNTRY_CURRENCY)
-    .filter(([, c]) => c === currency)
-    .map(([country]) => country);
-}
 
 export function currencyForCountry(country: string | null | undefined): Currency {
   if (!country) return DEFAULT_CURRENCY;

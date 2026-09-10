@@ -60,6 +60,10 @@ Also shipped (27–28 July 2026):
   customer portal where the provider offers one. Razorpay subscriptions carry an
   `app` note so one Razorpay account can serve several products without cross-talk.
   Schema migrated (`drizzle/0001`) off Razorpay-specific column names.
+  *(Superseded 9–10 Sep 2026: the Paddle adapter and the hosted-portal capability
+  were deleted, the six currencies cut to INR + USD, and PayPal Subscriptions
+  became the foreign rail. This entry is kept as history — see §3.1 Billing for
+  current state.)*
 - **Migration runner** — `npm run db:migrate` applies `drizzle/*.sql` in order,
   tracked in `_migrations`; safe on every deploy. Renames must live here, not in
   `drizzle-kit push`, which treats a rename as drop + add.
@@ -182,7 +186,7 @@ Everything in this phase exists to serve the customers from Phase 0. If a featur
 - Feedback QR → rating form → all feedback stored privately → *after submission*, every respondent sees a "Review us on Google" link.
 - **We do NOT gate** (i.e., we don't show the Google link only to happy customers). Gating violates Google review policy and can get customers' listings penalized and our domain flagged. Sell it as "feedback capture + review nudge" — 90% of the value, none of the risk. Document this stance; customers will ask for gating.
 
-**Billing** — ✅ built, live on Razorpay (INR); PayPal adapter written for USD; Paddle written but not enabled
+**Billing** — ✅ live: Razorpay (INR) + PayPal Subscriptions (USD). Two providers, one currency each.
 - ✅ Provider-agnostic (`BillingProvider`), geo-routed and clamped to what a
   configured provider can settle. ✅ Webhooks idempotent per event id.
 - ✅ **Two currencies, INR + USD** (9 Sep 2026). EUR/GBP/AUD/CAD were priced with
@@ -195,19 +199,21 @@ Everything in this phase exists to serve the customers from Phase 0. If a featur
   billing plan → subscription, lazily created and cached like Razorpay's.
   Webhook verification is a round trip to PayPal (rotating cert, no local HMAC),
   which is why `parseWebhook` is now allowed to be async.
-- ✅ PayPal cancels immediately with no follow-up event, unlike Razorpay/Paddle
+- ✅ PayPal cancels immediately with no follow-up event, unlike Razorpay's
   cancel-at-cycle-end. Handled: stored as `cancelling` with the paid-through
   date, and `settlePlan()` drops the user on the next quota check once that date
   passes. No cron needed.
-- 🔲 **PayPal credentials + webhook id on the server** — the adapter is dark
-  until `PAYPAL_*` is set. Needs QRVeda's own REST app, not the sibling sites'.
-- 🔲 **Real USD prices.** The USD numbers in `tiers.ts` are still placeholders,
-  and they're now the only foreign prices there are.
-- 🔲 Sandbox run: subscribe → webhook activates → cancel → downgrade at period end.
+- ✅ **PayPal credentials + webhook id on the server** (10 Sep 2026) — QRVeda's
+  own live REST app, seven events, verified rejecting unsigned deliveries.
+- ✅ **USD prices settled** — $9/$19/$79, roughly 3× the INR ladder.
+- ⚠️ **No end-to-end run.** Deliberately deferred; the first foreign customer
+  exercises the code. Weakest link is the cancellation path above.
 - 🔲 End-to-end test against real Razorpay (subscribe → webhook → cancel → downgrade).
-- 🔲 Paddle: business verification, one sandbox run. Worth finishing for one
-  reason — as merchant of record it handles EU/UK VAT, which PayPal does not,
-  and that liability is ours at Agency pricing.
+- 🔲 **VAT/sales tax on USD sales is our liability.** Neither provider is a
+  merchant of record. The Paddle adapter that would have solved it was written,
+  never enabled, and **deleted on 10 Sep 2026** — nothing was using it and it was
+  reporting "not configured" in the admin panel. Revisit with a merchant-of-record
+  provider if EU/UK revenue becomes material.
 - 🔲 Mid-cycle upgrades/downgrades with proration — today you cancel and resubscribe.
 
 **Razorpay account is shared** with daredate.in and cheekydeck.com

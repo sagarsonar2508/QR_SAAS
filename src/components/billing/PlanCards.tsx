@@ -77,7 +77,7 @@ export default function PlanCards({
       if (!res.ok) throw new Error(data.error ?? "Could not start checkout");
 
       const session = data.session as CheckoutSession;
-      // Hosted checkout (Paddle): hand the browser over and let the return URL
+      // Hosted checkout (PayPal): hand the browser over and let the return URL
       // bring them back. Keep `busy` set — the page is navigating away.
       if (session.kind === "redirect") {
         window.location.href = session.url;

@@ -35,7 +35,9 @@ The feedback QR redirects to a hosted star-rating page (`/f/{code}`). Feedback i
 
 ## Billing
 
-Two providers behind one interface, split by the customer's currency: **Razorpay** for INR (UPI Autopay, Indian settlement) and **Paddle** for USD/EUR/GBP/AUD/CAD (merchant of record, so VAT/sales tax is Paddle's problem, not ours). Configure either, both or neither — with neither, the app runs in **free pilot mode** with no plan limits.
+Two providers behind one interface, split by the customer's currency: **Razorpay** for INR (UPI Autopay, Indian settlement) and **PayPal Subscriptions** for USD (everywhere else). Razorpay cannot hold a recurring mandate in any other currency, which is why a second provider exists at all. Configure either, both or neither — with neither, the app runs in **free pilot mode** with no plan limits.
+
+Neither is a merchant of record, so VAT/sales tax on USD sales is our liability. See `docs/BILLING.md`.
 
 - Plans: Free (3 QRs) / Starter (25) / Business (100) / Agency (1,000), monthly or annual, priced per market in each currency.
 - Currency is resolved server-side from the CDN geo header, overridable by the visitor, and always clamped to what a configured provider can actually settle.

@@ -8,7 +8,7 @@ import { Card, Empty, Pill, TableWrap, Td, Th, statusTone } from "@/components/a
 
 export const dynamic = "force-dynamic";
 
-const PROVIDER_IDS = ["razorpay", "paypal", "paddle"] as const;
+const PROVIDER_IDS = ["razorpay", "paypal"] as const;
 
 function Health({
   ok,
@@ -47,7 +47,6 @@ export default async function AdminSystemPage() {
       id,
       configured: p.isConfigured(),
       currencies: p.supportedCurrencies.join(", "),
-      portal: p.hasPortal,
     };
   });
 
@@ -90,7 +89,7 @@ export default async function AdminSystemPage() {
                 label={`${p.id[0].toUpperCase()}${p.id.slice(1)}`}
                 detail={
                   p.configured
-                    ? `Configured · ${p.currencies}${p.portal ? " · hosted portal" : " · in-app cancel only"}`
+                    ? `Configured · ${p.currencies} · in-app cancel only`
                     : `Not configured — ${p.currencies} cannot be charged`
                 }
               />

@@ -6,9 +6,8 @@ QRVeda charges through **providers split by the customer's currency**:
 |---|---|---|
 | INR | Razorpay | UPI Autopay and netbanking, settles to an Indian bank account. Razorpay cannot hold a recurring mandate in any other currency. |
 | USD | PayPal | PayPal Subscriptions — the live foreign rail. Real recurring billing, settles to the PayPal balance. |
-| USD | Paddle *(not configured)* | Merchant of record — Paddle would be the legal seller, so it registers, collects and remits VAT/sales tax worldwide and issues the invoices. PayPal does none of that. |
 
-Any can be configured independently. With none configured the app runs in
+Either can be configured independently. With neither configured the app runs in
 **free pilot mode**: no plan limits are enforced and nothing is ever charged.
 
 ### Why not "Razorpay international"
@@ -59,7 +58,6 @@ src/lib/billing/
   providers/
     razorpay.ts
     paypal.ts
-    paddle.ts
 ```
 
 Three invariants hold the design together:
@@ -76,9 +74,8 @@ Three invariants hold the design together:
 ### Currency and country
 
 `COUNTRY_CURRENCY` in `countries.ts` maps country → currency, and
-`DEFAULT_CURRENCY` (USD) catches everything unlisted. The Paddle adapter derives
-its per-country `unit_price_overrides` from the *same* map, so the price a
-visitor is quoted and the price Paddle charges cannot drift apart.
+`DEFAULT_CURRENCY` (USD) catches everything unlisted. India is the only entry,
+because it is the only market with its own rail; everywhere else is quoted USD.
 
 Adding a currency: extend the `Currency` union in `tiers.ts`. TypeScript then
 requires a price for every tier, so a half-filled currency can't ship.
@@ -122,7 +119,6 @@ One route per provider, because each signs deliveries differently:
 |---|---|---|
 | Razorpay | `/api/billing/webhook/razorpay` | `x-razorpay-signature`, HMAC-SHA256 of the raw body |
 | PayPal | `/api/billing/webhook/paypal` | `paypal-transmission-*` headers, verified by **calling PayPal back** — there is no local HMAC, because PayPal signs with a rotating cert |
-| Paddle | `/api/billing/webhook/paddle` | `Paddle-Signature: ts=…;h1=…`, HMAC-SHA256 of `` `${ts}:${rawBody}` `` |
 
 PayPal's round-trip verification is why `BillingProvider.parseWebhook` may return
 a promise and the route awaits it. If `PAYPAL_WEBHOOK_ID` is unset, every PayPal
@@ -133,8 +129,7 @@ Razorpay, so any endpoint already registered in the Razorpay dashboard keeps
 functioning.
 
 Every delivery is recorded in `webhook_events` (PK `provider, event_id`) before
-being applied, so retries are no-ops. Paddle deliveries older than 5 minutes are
-rejected as replays.
+being applied, so retries are no-ops.
 
 `users.plan` is **recomputed** from all live subscriptions rather than written
 straight from the event — otherwise a late "cancelled" webhook for an old
@@ -142,8 +137,8 @@ subscription would downgrade a user who has already resubscribed.
 
 #### Cancellation, and the one status that expires by the clock
 
-Razorpay and Paddle both cancel **at cycle end** and send a terminal event when
-it arrives, so a webhook does the downgrade. PayPal has no cancel-at-cycle-end:
+Razorpay cancels **at cycle end** and sends a terminal event when it arrives, so
+a webhook does the downgrade. PayPal has no cancel-at-cycle-end:
 `/cancel` stops billing immediately and PayPal sends nothing further — even
 though the customer has paid through the current period.
 
@@ -238,17 +233,7 @@ Catalog products and billing plans are created lazily on first subscribe.
 `PAYMENT.SALE.COMPLETED` (a renewal) re-reads the subscription from PayPal,
 because the sale payload carries no `next_billing_time`.
 
-### Paddle
-
-1. Create a Paddle account and complete their business verification (this is a
-   review process, not instant — start it early).
-2. Set `PADDLE_API_KEY`, and `PADDLE_ENV=live` for production. Anything other
-   than `live` uses the sandbox.
-3. Under **Checkout settings**, set a default payment link — Paddle only returns
-   a hosted checkout URL when one is configured.
-4. Add a notification destination pointing at
-   `<APP_URL>/api/billing/webhook/paddle`, subscribed to `subscription.*`.
-5. Put its secret (`pdl_ntfset_…`) in `PADDLE_WEBHOOK_SECRET`.
+### Repricing
 
 Products and prices are created lazily on first checkout. Because plan objects
 are cached in `billing_plans`, **changing a price in `tiers.ts` does not update
@@ -271,11 +256,7 @@ parallel with development.
 - [ ] **VAT/sales-tax position decided for the USD side.** PayPal is *not* a
       merchant of record — selling SaaS to EU/UK businesses makes the tax
       liability yours, not PayPal's. At Agency pricing ($79/mo) this is a real
-      exposure, and it is the main argument for finishing the Paddle adapter.
-- [ ] **Paddle business verification approved** *(only if enabling Paddle).*
-      They review what you sell and how you sell it. Have a live site, clear
-      pricing and working policy pages ready before applying, and expect a few
-      days.
+      exposure. A merchant-of-record provider is the standard fix.
 - [ ] **Razorpay KYC complete** and subscriptions enabled on the account (UPI
       Autopay and e-mandate registration are separate toggles).
 - [ ] **Policy pages published and linked in the footer:** terms of service,
@@ -313,8 +294,13 @@ parallel with development.
 ### Known gaps
 
 - **Plan changes** (upgrade/downgrade mid-cycle) aren't implemented. Today a user
-  subscribes to a new tier and the old subscription must be cancelled. Paddle
-  supports proration via its update-subscription endpoint if you need it.
-- **Razorpay has no hosted portal**, so Indian customers get the app's own cancel
-  button while Paddle customers get Paddle's full portal. The billing page
-  branches on `provider.hasPortal`.
+  subscribes to a new tier and the old subscription must be cancelled.
+- **No hosted billing portal.** Neither provider offers one we can link a
+  customer into, so the app's own cancel button is the only self-service path.
+  The `hasPortal`/`portalUrl` capability was removed with Paddle on 2026-09-10;
+  see the note at the bottom of `lib/billing/provider.ts` for what to restore if
+  a provider with a real portal is ever adopted.
+- **VAT/sales tax is our liability.** Neither Razorpay nor PayPal is a merchant
+  of record. For USD sales to EU/UK businesses that exposure is real and grows
+  with revenue — it is the one thing the deleted Paddle adapter would have
+  solved.

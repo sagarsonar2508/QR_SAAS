@@ -15,7 +15,6 @@ import {
 } from "@/lib/billing";
 import PlanCards from "@/components/billing/PlanCards";
 import CancelButton from "@/components/billing/CancelButton";
-import ManageBillingButton from "@/components/billing/ManageBillingButton";
 import CurrencySwitcher from "@/components/billing/CurrencySwitcher";
 
 export const dynamic = "force-dynamic";
@@ -51,11 +50,10 @@ export default async function BillingPage({
     yearly: TIERS[key].prices[currency].yearly,
   }));
 
-  // Providers with a hosted portal own cancellation too, so we show one control
-  // or the other — never both.
+  // Neither remaining provider has a hosted billing portal (Razorpay has none,
+  // PayPal offers no per-customer link we can mint), so the app's own cancel
+  // button is the only self-service path.
   const manageable = !!sub && MANAGEABLE.includes(sub.status);
-  const hasPortal =
-    manageable && isProviderId(sub.provider) && getProvider(sub.provider).hasPortal;
 
   return (
     <div className="space-y-6">
@@ -120,8 +118,7 @@ export default async function BillingPage({
               / {configured ? quota.limit : "∞ (pilot)"}
             </span>
           </p>
-          {configured && hasPortal && <ManageBillingButton />}
-          {configured && manageable && !hasPortal && sub.status !== "cancelling" && (
+          {configured && manageable && sub.status !== "cancelling" && (
             <CancelButton />
           )}
         </div>
