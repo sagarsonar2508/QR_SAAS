@@ -247,8 +247,27 @@ a route to selling abroad.
 ### 3.4 Outstanding — ranked (as of 28 July 2026)
 
 **Blocking real users**
-1. 🔲 **Postgres backups.** Unrecoverable if skipped. `pg_dump` nightly, off-server, with a tested restore.
-2. 🔲 **SMTP credentials on the server.** Verification and reset emails are built but send nothing without them. The verification gate fails open meanwhile, so signup still works — but nobody can reset a forgotten password.
+1. ✅ **Postgres backups — live and off-site** (10 Sep 2026).
+   `scripts/backup.sh` nightly at 02:15 IST: dump → verify → rotate → upload to
+   `gs://sagar-projects-backups/`. Retention 14 on disk, 14 daily / 8 weekly /
+   6 monthly in GCS. Verified end to end — objects confirmed present in the
+   bucket and MD5-identical to the local dumps.
+   The VM authenticates as itself (`devstorage.read_write` scope + Object
+   Creator/Viewer on the bucket); no service-account key exists, because org
+   policy blocks key creation and keyless is the better answer anyway. Neither
+   granted role can delete, so a compromised server cannot wipe the backups.
+   **dare_web and cheekydeck are covered too** — same schedule, same bucket,
+   `deploymentScript/backup.sh` in each repo. Their Atlas cluster is M0, which
+   gets no automated backups at all; before this they had none.
+   - 🔲 Still archive-level verification only — the `sagar` role lacks
+     `CREATEDB`, so the full restore-and-count check falls back. Fix:
+     `sudo -u postgres psql -c 'alter role sagar createdb'`.
+   - 🔲 No monitoring: a silently failing cron is indistinguishable from a
+     working one until someone looks.
+2. ✅ **SMTP credentials on the server** — set as of 10 Sep 2026. NOTE: this makes
+   the email-verification gate LIVE (it previously failed open), so an unverified
+   user can no longer create QR codes. Untested that mail actually lands.
+   ~~**SMTP credentials on the server.**~~ Verification and reset emails are built but send nothing without them. The verification gate fails open meanwhile, so signup still works — but nobody can reset a forgotten password.
 3. 🔲 **Error monitoring.**
 4. 🔲 **Payment flow tested end to end** on live Razorpay.
 
