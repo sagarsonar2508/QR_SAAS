@@ -250,12 +250,32 @@ a route to selling abroad.
 5. 🔲 **Tests.** None exist. Billing and `redirect-rules` first — both were verified by hand and nothing prevents regression.
 6. 🔲 **Uploads to object storage.**
 7. 🔲 **Self-serve account deletion** — the privacy policy promises deletion on request; today it's manual.
-8. 🔲 **PayPal go-live** — QRVeda's own REST app, `PAYPAL_*` on the server,
-   webhook subscribed, real USD prices, one sandbox run. The adapter is written
-   and builds; nothing sells abroad until this is done.
+8. ⚠️ **PayPal go-live — live, but untested with money** (10 Sep 2026).
+   Done: QRVeda's own live REST app (`qrveda`, client `BAABy5zt…`), `PAYPAL_*`
+   on the server, webhook `19F11703YT081133Y` on
+   `/api/billing/webhook/paypal` with 7 events, verified rejecting unsigned
+   deliveries (400). USD confirmed sellable in production — a `currency=USD`
+   cookie now renders $9/$19/$79 where it previously clamped back to INR.
+
+   **USD pricing settled 10 Sep 2026:** $9 / $19 / $79 monthly stands as the
+   ladder. Roughly 3× the INR pricing — a market split, not an FX conversion.
+   These are no longer placeholders; treat them as decided.
+
+   **End-to-end test deliberately deferred** (decided 10 Sep 2026). No PayPal
+   subscription has ever been created by this code, so the first foreign
+   customer is the one who exercises it. Accepted risk, taken knowingly. The
+   least-proven path is cancellation: PayPal cancels immediately and sends no
+   further event, so entitlement runs on our own `cancelling` +
+   `currentPeriodEnd` logic in `settlePlan()`. If a foreign sale ever behaves
+   oddly, start there. Verifying it costs one sandbox run whenever it's wanted.
 
 **Housekeeping**
-9. 🔲 Delete the dead `GEOIP_DB_PATH` env var — Cloudflare supplies geo now.
+9. ✅ Deleted the dead `GEOIP_DB_PATH` env var (10 Sep 2026) — it was never read
+   by any code, only inherited from the abandoned MaxMind plan. QRVeda sits
+   behind Cloudflare and trusts exactly one geo header, `cf-ipcountry`; the
+   sibling sites run bare nginx and do their own MaxMind lookup instead, which
+   is why their `lib/geo.ts` accepts a fallback chain and this app deliberately
+   does not. Backup of the pre-edit server env: `.env.bak.20260910-061214`.
 10. 🔲 Rename one of the two `drizzle/0003_*.sql` files to `0004_` so ordering is unambiguous.
 11. 🔲 2FA on the Cloudflare account (it controls production DNS).
 12. 🔲 `deploy/nginx-cloudflare.conf` not yet installed — optional; only affects nginx's own logs now that the app reads `CF-Connecting-IP` directly.

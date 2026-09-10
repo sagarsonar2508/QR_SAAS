@@ -281,10 +281,8 @@ parallel with development.
 - [ ] **Policy pages published and linked in the footer:** terms of service,
       privacy policy, refund/cancellation policy, and contact details. Both
       providers check for these; Indian payment rules require them.
-- [ ] **USD pricing decided.** The USD numbers in `tiers.ts` are placeholders
-      chosen for plausibility, not researched against the market. They are now
-      the *only* foreign prices, so each one is a business decision with nothing
-      behind it.
+- [x] ~~**USD pricing decided.**~~ Settled 10 Sep 2026: $9 / $19 / $79 monthly,
+      roughly 3× the INR ladder — a market split, not an FX conversion.
 - [ ] **GST on the INR side.** Razorpay is *not* a merchant of record — you
       invoice the customer and handle GST yourself. Confirm your registration
       status and whether prices are GST-inclusive, then say so on the pricing
@@ -297,6 +295,10 @@ parallel with development.
 
 - [ ] **Sandbox end-to-end run per provider:** subscribe → webhook activates the
       plan → quota enforced → cancel → webhook downgrades at period end.
+      **Consciously skipped for PayPal on 10 Sep 2026** — it is live and
+      unexercised, so the first foreign customer is the test. The weakest link
+      is cancellation, which runs on our own `cancelling` + `currentPeriodEnd`
+      logic rather than a provider event; see the cancellation note above.
 - [ ] **Webhook endpoints registered in both dashboards** and reachable from the
       public internet (they will not reach `localhost`; use a tunnel for local
       testing).
