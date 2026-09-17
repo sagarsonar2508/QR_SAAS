@@ -131,7 +131,7 @@ Motion B is the sleeper. Agencies and print shops already have the customer rela
 ### Actions
 1. **Mock, don't build.** Design 5–6 dashboard/landing screens (Figma or even slides). A clickable mock of: create QR → print → scan analytics → edit destination.
 2. **Restaurant track:** Visit 15–20 restaurants/cafés in person. Pitch the Restaurant Suite at ₹499/mo (or ₹4,999/yr). Goal: **5 advance commitments** (₹500–1,000 token payment or signed LOI for a free 30-day pilot converting to paid).
-3. **Agency track:** Call/meet 10–15 agency owners and print shops (start with the gsharp.media network). Pitch white-label at ₹2,999–4,999/mo flat. Goal: **2 committed pilot agencies**.
+3. **Agency track:** Call/meet 10–15 agency owners and print shops. Pitch white-label at ₹2,999–4,999/mo flat. Goal: **2 committed pilot agencies**.
 4. **Log every objection verbatim.** These become the real feature list and the sales script.
 
 ### Go / Kill criteria (be honest here — this is where you avoid losing a year)
@@ -268,7 +268,14 @@ a route to selling abroad.
    the email-verification gate LIVE (it previously failed open), so an unverified
    user can no longer create QR codes. Untested that mail actually lands.
    ~~**SMTP credentials on the server.**~~ Verification and reset emails are built but send nothing without them. The verification gate fails open meanwhile, so signup still works — but nobody can reset a forgotten password.
-3. 🔲 **Error monitoring.**
+3. ✅ **Error monitoring** (10 Sep 2026) — `scripts/monitor.sh`, every 15 min,
+   covering all three apps: new pm2 errors, backup age/failure, site
+   reachability. Emails only when something is wrong. Deliberately minimal —
+   see docs/MONITORING.md for what it does not do and when to swap in Sentry.
+   Also confirmed SMTP delivery works from the server (previously untested).
+   - 🔲 The monitor is not itself monitored: if cron or SMTP dies, alerts stop
+     silently. A dead-man's-switch (healthchecks.io free tier) is the fix.
+   ~~**Error monitoring.**~~
 4. 🔲 **Payment flow tested end to end** on live Razorpay.
 
 **Before meaningful revenue**
@@ -370,7 +377,7 @@ Prioritize strictly by what paying customers ask for. Expected order:
 
 **Channel 2 — Agencies & print shops (Motion B):** The scale lever. Print shops are gold: every customer printing a flyer/menu/standee is a QR prospect at the exact right moment. Offer print shops 20–30% recurring commission or wholesale pricing. Target: 1 new channel partner/month.
 
-**Channel 3 — Existing network:** gsharp.media clients and contacts first — warmest possible leads, use them for pilots and testimonials.
+**Channel 3 — Existing network:** — warmest possible leads, use them for pilots and testimonials.
 
 **Channel 4 — Content/SEO (slow burn, don't depend on it):** India-specific long-tail only ("restaurant menu QR code India", "UPI QR with analytics", "WhatsApp QR for business"). Hindi + English. Free bulk-QR tool as a lead magnet. Expect nothing for 6+ months.
 

@@ -14,7 +14,8 @@ set -euo pipefail
 # not a backup — a truncated dump, a permissions change or a pg_dump/server
 # version mismatch all produce a file of plausible size that restores into
 # nothing. This script restores every dump it takes, compares the row counts
-# against the live database, and fails loudly when they disagree.
+# against the counts recorded inside the archive, and fails loudly when they
+# disagree.
 #
 # WITHOUT A DESTINATION THIS IS ONLY HALF A BACKUP. On-box copies protect
 # against a bad migration, an accidental DELETE, or application corruption.
@@ -106,6 +107,22 @@ row_counts() {
   done
 }
 
+archive_counts() {
+  # $1 = a dump file. Same output shape as row_counts, but counted from the
+  # COPY blocks inside the archive itself. This is the comparison baseline, not
+  # the live database: scans are written continuously, so live counts drift
+  # between dump and check and would fail a perfectly good backup — and would
+  # always fail --verify-only on an older dump. COPY text format escapes
+  # embedded newlines, so one line is exactly one row.
+  local dump="$1" t n
+  for t in $COUNT_TABLES; do
+    n="$(pg_restore --data-only --table="$t" --file=- "$dump" 2>/dev/null \
+         | awk '/^COPY /{on=1; next} on && $0=="\\."{on=0; next} on{c++} END{print c+0}')" \
+      || n=MISSING
+    printf '%s:%s\n' "$t" "$n"
+  done
+}
+
 # Weaker fallback: parse the archive's table of contents.
 #
 # Used when the database role cannot create the scratch database. This catches
@@ -162,18 +179,15 @@ verify_dump() {
     die "RESTORE FAILED for $dump — this backup is not usable."
   fi
 
-  local live restored
-  live="$(row_counts "$DATABASE_URL")"
+  local expected restored
+  expected="$(archive_counts "$dump")"
   restored="$(row_counts "$scratch_url")"
 
   psql "$admin_url" -q -c "drop database if exists $VERIFY_DB" >/dev/null
 
-  if [ "$live" != "$restored" ]; then
-    printf 'live:\n%s\nrestored:\n%s\n' "$live" "$restored" >&2
-    # Not necessarily corruption: rows written between the dump and this
-    # comparison show up here too. Treated as a failure anyway — a backup you
-    # cannot explain is one you cannot rely on.
-    die "ROW COUNTS DIFFER between live and restored."
+  if [ "$expected" != "$restored" ]; then
+    printf 'in archive:\n%s\nrestored:\n%s\n' "$expected" "$restored" >&2
+    die "ROW COUNTS DIFFER between archive and restored database."
   fi
 
   log "verified: restore succeeded, row counts match"

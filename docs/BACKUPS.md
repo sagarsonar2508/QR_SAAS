@@ -30,7 +30,9 @@ plausible size that restores into nothing. So every dump is checked immediately,
 at one of two levels.
 
 **Full (preferred).** Restore into a throwaway database, count rows in `users`,
-`qr_codes`, `scans`, `subscriptions` and `feedback`, and compare against live.
+`qr_codes`, `scans`, `subscriptions` and `feedback`, and compare against the
+row counts recorded inside the dump itself. Not against live: `scans` grows with
+every scan, so a live comparison fails good backups and blocks the upload.
 Requires the database role to hold `CREATEDB`.
 
 **Archive-level (current fallback).** Parse the archive's table of contents with
@@ -97,6 +99,11 @@ this shape needs **three rules total** — not three per app:
 | Delete | 14 | `daily/` |
 | Delete | 56 | `weekly/` (8 weeks) |
 | Delete | 186 | `monthly/` (6 months) |
+
+Confirmed present on the bucket 2026-09-10. **Every rule must carry its prefix.**
+A 14-day rule without one applies to the whole bucket and would sweep the weekly
+and monthly copies as soon as they turned 14 days old — collapsing tiered
+retention back to flat, while still looking configured.
 
 `<app>/daily/` would have needed three rules per project, and a fourth project
 would mean remembering to add three more by hand.
