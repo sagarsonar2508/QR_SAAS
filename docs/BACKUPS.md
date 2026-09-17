@@ -35,7 +35,7 @@ row counts recorded inside the dump itself. Not against live: `scans` grows with
 every scan, so a live comparison fails good backups and blocks the upload.
 Requires the database role to hold `CREATEDB`.
 
-**Archive-level (current fallback).** Parse the archive's table of contents with
+**Archive-level (fallback).** Parse the archive's table of contents with
 `pg_restore --list` and confirm every critical table carries `TABLE DATA`. This
 catches truncation, corruption, a wrong-format file, a missing table and a
 schema-only dump. It does *not* prove the data restores cleanly.
@@ -43,14 +43,15 @@ schema-only dump. It does *not* prove the data restores cleanly.
 The script tries full first and falls back automatically, logging which level
 ran — a downgrade is never silent.
 
-**Currently running at archive level**, because the `sagar` role lacks
-`CREATEDB`. To upgrade, once, on the server:
+**Running at full level since 2026-09-17**, after `CREATEDB` was granted:
 
 ```bash
 sudo -u postgres psql -c 'alter role sagar createdb'
 ```
 
-Nothing else changes; the next nightly run picks it up.
+First full run: restore succeeded, counts matched (users 6, qr_codes 1,
+scans 5, subscriptions 3, feedback 0). If the log ever shows "falling back to
+archive verification" again, the grant has been lost.
 
 ### The verifier is itself tested
 
@@ -217,7 +218,6 @@ pm2 start qrveda
 
 ## Known gaps
 
-- **Archive-level verification only** until the `CREATEDB` grant is applied.
 - **Uploads are not backed up.** Customer PDFs and images go to `uploads/` on
   local disk, outside the database, and this script does not touch them. There
   is currently no `uploads/` directory in production — nothing has been uploaded

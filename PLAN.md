@@ -259,9 +259,9 @@ a route to selling abroad.
    **dare_web and cheekydeck are covered too** — same schedule, same bucket,
    `deploymentScript/backup.sh` in each repo. Their Atlas cluster is M0, which
    gets no automated backups at all; before this they had none.
-   - 🔲 Still archive-level verification only — the `sagar` role lacks
-     `CREATEDB`, so the full restore-and-count check falls back. Fix:
-     `sudo -u postgres psql -c 'alter role sagar createdb'`.
+   - ✅ Full restore verification live (17 Sep 2026) — `CREATEDB` granted;
+     counts are compared against the dump itself, not live, so scans written
+     mid-backup no longer fail the run and block the upload.
    - 🔲 No monitoring: a silently failing cron is indistinguishable from a
      working one until someone looks.
 2. ✅ **SMTP credentials on the server** — set as of 10 Sep 2026. NOTE: this makes
